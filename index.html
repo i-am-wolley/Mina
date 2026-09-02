@@ -1973,6 +1973,15 @@ const GOAL_ALLOCATION = [
   { key: 'EM ex-India', weight: 0.15, color: 'lilac', amt: 35100 },
 ];
 
+// Concrete, currently-existing instruments per slice — starting points for the user's own due
+// diligence, not high-conviction single picks. Not personalised licensed advice.
+const GOAL_FUNDS = [
+  { tag: 'India Large-cap / Flexicap — 45%', icon: 'chart', title: 'UTI Nifty 50 Index Fund or ICICI Prudential Nifty 50 Index Fund (Direct)', body: 'Cheap index beta (~0.10–0.20% expense ratio) from a different AMC than the two HDFC BSE Sensex funds already held — real manager/index diversification, not a third copy of the same bet. No regulatory friction.' },
+  { tag: 'India quality Midcap / Multicap — 20%', icon: 'chart', title: 'Kotak Large & Midcap Fund or Mirae Asset Large & Midcap Fund (Direct)', body: 'A large+midcap blend, genuinely different from the Tata Midcap150 (index) and HDFC Mid Cap (active) already held — a quality-at-reasonable-valuation style rather than a smallcap chase.' },
+  { tag: 'Global diversified ex-AI — 20%', icon: 'newspaper', title: 'Check open status first — many India-domiciled global funds are paused', body: 'SEBI/RBI\'s $7B overseas cap is nearly exhausted; Axis, Nippon India, PGIM India, Edelweiss and Franklin Templeton have all paused fresh SIPs on select international schemes in 2026 — only ~28 remain open. <b>More reliable right now:</b> use the household\'s existing Alpaca (Vinod) or DriveWealth (Keerthana) account under the LRS (well within the $250K/person/year limit at this size) to buy <b>Vanguard Total International Stock ETF (VXUS)</b> directly — ex-US, ~40 countries, none of the household\'s existing AI/semis concentration.' },
+  { tag: 'EM ex-India — 15%', icon: 'newspaper', title: 'Same friction, same fallback', body: 'Check first: Kotak Global Emerging Market Fund (verify it\'s open). More reliable right now: the same brokerage account, buying <b>Vanguard FTSE Emerging Markets ETF (VWO)</b> or <b>iShares Core MSCI Emerging Markets ETF (IEMG)</b> — broad China/Taiwan/Korea/Brazil exposure, diversifying sectors the household doesn\'t already hold.' },
+];
+
 const GOAL_RESEARCH = [
   { icon: 'chart', tag: 'India — Large-cap', title: 'Fairly valued — the best risk-adjusted bet on the table', body: 'Nifty 50 PE ≈20.4 (Aug 2026), below its 10-yr median of 23.4. From this band, historical 5-yr forward returns have median’d ~9.6%. — indexpe.in, trendlyne.com' },
   { icon: 'chart', tag: 'India — Mid & Smallcap', title: 'Already expensive — and you’re already overweight here', body: 'Midcap 150 near PE 27, Smallcap 250 near PE 38, both well above ~17–20x long-run norms. Fresh money here doubles down on the household’s most stretched valuation. — Finomics Edge, Whalesbook' },
@@ -1990,6 +1999,8 @@ const GOAL_FRAMEWORK = [
   { title: '12–18 months in, check which scenario you’re tracking', body: 'If actual returns run closer to pessimistic, decide then — raise the SIP, extend the horizon, or accept a lower number — rather than discovering it in year 9.' },
   { title: 'Trim the RSU concentration over time', body: 'AB InBev RSU is a single-stock position outside this whole model. Periodic sell-and-reinvest reduces a real, uncompensated risk.' },
   { title: 'Don’t add a third overlapping fund', body: 'Keerthana’s two Parag Parikh Flexi Cap folios already share one ISIN. Consolidate existing overlap before adding anything new in the same category.' },
+  { title: 'Re-check the SEBI overseas cap and consolidate if it eases', body: 'If a paused India-domiciled global/EM fund reopens, decide whether to keep the direct LRS/ETF holdings (VXUS/VWO/IEMG) or migrate future contributions into the simpler INR wrapper — existing units don’t need to move either way.' },
+  { title: 'Once the systematic base is established, consider a small direct-stock satellite', body: 'Optional — a handful of quality India large-caps in sectors the household doesn’t already own heavily (financials, consumer, healthcare — not more semis/tech) can sit alongside the fund-based core. Keep it single-digit % of new money, not a replacement for the allocation above.' },
 ];
 
 function GoalPlanScreen() {
@@ -2067,6 +2078,23 @@ function GoalPlanScreen() {
             </div>
             <div class="trend-note">The ₹10L May lumpsum invests in this same split — not a separate bucket.</div>
           <//>
+        </div>
+
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="link" size=${13} />Which funds, specifically</div>
+          <div class="insight-section-body" style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-5);">
+            ${GOAL_FUNDS.map((f, i) => html`
+              <div class="insight-card" key=${i}>
+                <span class="insight-icon"><${Icon} name=${f.icon} size=${16} /></span>
+                <div class="card-body">
+                  <div class="insight-tag">${f.tag}</div>
+                  <div class="insight-title">${f.title}</div>
+                  <div class="insight-body" dangerouslySetInnerHTML=${{ __html: f.body }} />
+                </div>
+              </div>
+            `)}
+          </div>
+          <div class="gap-note" style="margin-top:var(--space-4)">Named as concrete starting points, not high-conviction single picks — check current expense ratio, exit load, and (for the international slices) whether the fund is actually open to fresh money. Not personalised licensed advice.</div>
         </div>
 
         <div>

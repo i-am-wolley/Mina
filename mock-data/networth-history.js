@@ -25,7 +25,7 @@ function buildHistory() {
   const drift = 1 - 0.052; // trend backward from today's value
   let value = end * drift;
   const series = [];
-  const today = new Date('2026-08-02T00:00:00');
+  const today = new Date('2026-09-02T00:00:00');
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
