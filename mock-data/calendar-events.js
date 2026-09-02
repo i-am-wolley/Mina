@@ -1,19 +1,12 @@
 // Matches investment_app_memo.md §8 (Investment calendar).
-// evt_1 amount is illustrative but the instrument and recurring-purchase pattern are real
-// (Vinod's HDFC BSE Sensex Direct folio shows a ~monthly purchase every statement cycle).
-// evt_2 is a real held stock; dividend timing/amount are illustrative pending a real corporate-
-// action feed (Module E, Stage 8). No fabricated action-required event is shown for this window —
-// the real FD maturities (2028/2029/2033) and card due date (22nd) both fall outside the next 7 days.
+// Deliberately empty for now. It previously carried a synthetic recurring-SIP-purchase prediction
+// (a guessed "next purchase" date/amount for the HDFC BSE Sensex folio, invented rather than sourced
+// from a real standing-instruction/mandate feed) — removed 2026-09-02 at the user's explicit request
+// ("remove such future purchases to be added automatically"). Don't reintroduce predicted/future
+// transactions here without a real source (a SIP mandate ingestion module, a broker calendar feed,
+// etc.) — this calendar should only ever hold events Mina actually knows are real, not forecasts.
+// Real, dated one-off events (a confirmed dividend, a real FD maturity, a real card due date) are
+// fine to add back when the date has genuinely passed or is confirmed, sourced from an actual
+// statement/feed rather than an assumed recurrence.
 
-export const calendarEvents = [
-  {
-    id: 'evt_1', date: '2026-08-06', type: 'SIP_INSTALMENT',
-    label: 'HDFC BSE Sensex Index Fund purchase', amount: 90000, instrument_id: 'inst_hdfc_sensex_direct',
-    action_required: false,
-  },
-  {
-    id: 'evt_2', date: '2026-08-08', type: 'DIVIDEND',
-    label: 'Reliance Industries dividend', amount: 1310, instrument_id: 'inst_reliance',
-    action_required: false,
-  },
-];
+export const calendarEvents = [];

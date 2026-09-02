@@ -67,9 +67,10 @@ export const positions = [
   { id: 'pos_k_mf_8', account_id: 'acc_keerthana_mf', instrument_id: 'inst_ppfas_flexicap_b', current_value: 1379979.31, cost_basis: 945000, unrealized_gain: 434979.31, units: 15199.751, nav: 90.7896, nav_asof: '2026-09-01 (AMFI)' },
   { id: 'pos_k_mf_9', account_id: 'acc_keerthana_mf', instrument_id: 'inst_quant_flexicap', current_value: 1397663.24, cost_basis: 1245000, unrealized_gain: 152663.24, units: 11526.359, nav: 121.258, nav_asof: '2026-09-01 (AMFI)' },
 
-  // Keerthana — gold. No live-quotable move since the last pass; kept at its 2026-08-02 mark
-  // (HDFC Gold ETF traded NAV) rather than guessed forward.
-  { id: 'pos_k_gold', account_id: 'acc_keerthana_gold', instrument_id: 'inst_hdfc_gold_etf', current_value: 3236413, cost_basis: 2179000, unrealized_gain: 1057413, units: 26624, nav: 121.56, nav_asof: '2026-08-02' },
+  // Keerthana — gold. Verified 2026-09-02 against Yahoo Finance's real-time NSE quote for the
+  // HDFC Gold ETF itself (ticker HDFCGOLD.NS) — the same live-quote method used for every stock
+  // above, not a web-search guess.
+  { id: 'pos_k_gold', account_id: 'acc_keerthana_gold', instrument_id: 'inst_hdfc_gold_etf', current_value: 3402547.20, cost_basis: 2179000, unrealized_gain: 1223547.20, units: 26624, nav: 127.80, nav_asof: '2026-09-02 (Yahoo Finance)' },
 
   // Keerthana — US stocks (DriveWealth). No wired brokerage price feed exists (Stage 8); prices
   // re-verified 2026-09-02 against Yahoo Finance's real-time quote API, matched by ticker.
@@ -84,17 +85,17 @@ export const positions = [
   { id: 'pos_k_us_9', account_id: 'acc_keerthana_drivewealth', instrument_id: 'inst_asml', current_value: 120359.54, cost_basis_usd: 1392.06, unrealized_gain: -11758.09, units: 0.7616, nav: 1665.14, price_usd: 1665.14, nav_asof: '2026-09-02 (Yahoo Finance)' },
 ];
 
-export const PRICE_ASOF = { date: '2026-09-02', usd_inr: 94.908, source: 'MF NAVs: AMFI official daily NAV file (portal.amfiindia.com), matched by ISIN, dated 2026-09-01. Stocks/RSU/FX: Yahoo Finance real-time quote API (query1.finance.yahoo.com), matched by ticker, pulled 2026-09-02. Gold kept at its prior 2026-08-02 mark (no fresher single-source quote pulled this pass).' };
+export const PRICE_ASOF = { date: '2026-09-02', usd_inr: 94.908, source: 'MF NAVs: AMFI official daily NAV file (portal.amfiindia.com), matched by ISIN, dated 2026-09-01. Stocks/RSU/FX/Gold ETF: Yahoo Finance real-time quote API (query1.finance.yahoo.com), matched by ticker, pulled 2026-09-02.' };
 
 // Sum of every position's current_value. All 11 MF positions use AMFI's official NAV file by ISIN.
-// 19 of 20 stock/RSU positions use Yahoo Finance's real-time quote API by ticker (Gold ETF excepted,
-// see PRICE_ASOF) — same authoritative-source discipline as the first reprice pass, just run again a
-// month later, which is what makes delta_month_pct below a real number instead of a placeholder.
+// All 20 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker — every
+// priced position in the household traces to one of exactly two authoritative sources, re-pulled a
+// month after the first pass, which is what makes delta_month_pct below a real number.
 export const householdTotals = {
-  current_total: 40990401,
+  current_total: 41156535,
   delta_today: 42300,        // SYNTHETIC — no daily snapshot pipeline yet (Stage 8)
   delta_today_pct: 0.0011,   // SYNTHETIC
-  delta_month_pct: 0.00711,  // REAL — (40990401 - 40701024) / 40701024, the actual 2026-08-02 → 2026-09-02 move
+  delta_month_pct: 0.01119,  // REAL — (41156535 - 40701024) / 40701024, the actual 2026-08-02 → 2026-09-02 move
   xirr: 0.152,               // SYNTHETIC — real per-position XIRR needs cashflow-dated lot history
   twr: 0.161,                // SYNTHETIC
   pending_pricing_count: 0,

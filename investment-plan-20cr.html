@@ -248,7 +248,7 @@
       </div>
       <div>
         <div class="hero-stat-label">Current net worth</div>
-        <div class="hero-stat-value">₹4.10 Cr</div>
+        <div class="hero-stat-value">₹4.12 Cr</div>
       </div>
       <div>
         <div class="hero-stat-label">New monthly investment</div>
@@ -281,7 +281,7 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">Gold ETF</div>
-        <div class="stat-value">₹32.4 L</div>
+        <div class="stat-value">₹34.0 L</div>
         <div class="stat-sub">Existing holding, own trend — not part of new allocation</div>
       </div>
       <div class="stat-card">
@@ -337,7 +337,7 @@
       <div class="card research-card">
         <div class="kicker-sm">Gold</div>
         <h3>Real bull run under way — but deliberately excluded here</h3>
-        <p>J.P. Morgan targets $6,000/oz by end-2026; long-run historical trend ~8%/yr. Your existing HDFC Gold ETF holding (₹32.4L) keeps compounding at that trend in the model below. Per your instruction, no new money in this plan goes to gold, FDs, or any other safety/diversifier bucket — this is a pure growth allocation.</p>
+        <p>J.P. Morgan targets $6,000/oz by end-2026; long-run historical trend ~8%/yr. Your existing HDFC Gold ETF holding (₹34.0L) keeps compounding at that trend in the model below. Per your instruction, no new money in this plan goes to gold, FDs, or any other safety/diversifier bucket — this is a pure growth allocation.</p>
         <div class="cite">Sources: <a href="https://www.jpmorgan.com/insights/global-research/commodities/gold-prices" target="_blank" rel="noopener">J.P. Morgan</a>, <a href="https://www.goldrepublic.com/en-us/gold-price/forecast" target="_blank" rel="noopener">GoldRepublic</a></div>
       </div>
     </div>
@@ -504,8 +504,8 @@
 (function() {
   const GOAL = 200000000;
   const YEARS = 10, MONTHS = 120;
-  const FD = 2954000, EPF_EXISTING = 5313080, GOLD = 3236413;
-  const MARKET_EXISTING = 40990401 - FD - EPF_EXISTING - GOLD;
+  const FD = 2954000, EPF_EXISTING = 5313080, GOLD = 3402547.20;
+  const MARKET_EXISTING = 41156535 - FD - EPF_EXISTING - GOLD;
   const FD_RATE = 0.075, EPF_RATE = 0.0825, GOLD_RATE = 0.08;
   const EPF_MONTHLY_CONTRIB = 34700 + 34700; // employee + employer, flat — no salary-linked stepup modeled
   const SIP_START = 234000, STEPUP = 0.05;
@@ -615,7 +615,7 @@
     svgContent += `<text x="${W-PR}" y="${y(GOAL)-8}" text-anchor="end" class="chart-value-label" fill="var(--accent)">Goal — ₹20 Cr</text>`;
 
     for (const [name, rates] of Object.entries(SCEN)) {
-      const pts = [[0, crore(40990401)*10000000]].concat(series[name].map((v,i)=>[i+1, v]));
+      const pts = [[0, crore(41156535)*10000000]].concat(series[name].map((v,i)=>[i+1, v]));
       const d = pts.map((p,i) => `${i===0?'M':'L'} ${x(p[0]).toFixed(1)} ${y(p[1]).toFixed(1)}`).join(' ');
       svgContent += `<path d="${d}" fill="none" stroke="${rates.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />`;
       const last = pts[pts.length-1];

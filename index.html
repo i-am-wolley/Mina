@@ -626,7 +626,7 @@ function currencyMajority(positionList) {
 }
 function buildIllustrativeTrend(startValue, endValue, days = 90, seed = 7) {
   const rand = seededRandom(seed);
-  const today = new Date('2026-08-02T00:00:00');
+  const today = new Date('2026-09-02T00:00:00');
   let value = startValue;
   const series = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -663,7 +663,7 @@ function whatChangedCards() {
 }
 
 function AgendaList() {
-  const today = new Date('2026-08-02T00:00:00');
+  const today = new Date('2026-09-02T00:00:00');
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today); d.setDate(d.getDate() + i);
     const iso = toLocalISO(d);
@@ -1907,10 +1907,17 @@ function MoneyScreen() {
 // is expected to compute, as long as every assumption stays named and visible.
 // Companion to investment-plan-20cr.html (same numbers, standalone doc + citations).
 // ============================================================
+// FD/EPF/Gold are looked up live from `positions` by account/id, not hardcoded duplicates — a
+// hardcoded copy of these three drifted out of sync with a real reprice once already (2026-09-02),
+// silently misattributing a gold price move into the "market-linked existing" bucket. Don't
+// reintroduce hardcoded copies here even for a "quick" constant.
+const GOAL_PLAN_FD = positions.filter(p => p.account_id === 'acc_vinod_fd').reduce((s, p) => s + p.current_value, 0);
+const GOAL_PLAN_EPF_EXISTING = positions.find(p => p.id === 'pos_v_epf').current_value;
+const GOAL_PLAN_GOLD = positions.find(p => p.id === 'pos_k_gold').current_value;
 const GOAL_PLAN = {
   goal: 200000000,
   months: 120,
-  fd: 2954000, epfExisting: 5313080, gold: 3236413,
+  fd: GOAL_PLAN_FD, epfExisting: GOAL_PLAN_EPF_EXISTING, gold: GOAL_PLAN_GOLD,
   fdRate: 0.075, epfRate: 0.0825, goldRate: 0.08,
   epfMonthlyContrib: 69400, // ₹34,700 employee + ₹34,700 employer, flat — no salary step-up modeled
   sipStart: 234000, stepup: 0.05,
@@ -2155,11 +2162,13 @@ function ComingSoonScreen({ name, stage }) {
 // ============================================================
 // 16  Router · top nav shell (replaces the sidebar) · household switcher
 // ============================================================
+// 'money' deliberately left out of the nav (hidden 2026-09-02 at the user's request) — the screen,
+// its route, and its data are untouched, just not linked from the top bar. Add the row back to
+// re-show it; no other code needs to change.
 const NAV_ITEMS = [
   { id: 'today', label: 'Today', icon: 'home' },
   { id: 'portfolio', label: 'Portfolio', icon: 'chart' },
   { id: 'insights', label: 'Insights', icon: 'bulb' },
-  { id: 'money', label: 'Money', icon: 'wallet' },
   { id: 'goal', label: 'Goal', icon: 'flag' },
 ];
 
