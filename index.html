@@ -253,6 +253,15 @@
   .mini-alloc-name { color: var(--text-secondary); flex: 1; }
   .mini-alloc-pct { font-weight: var(--fw-bold); color: var(--text-primary); }
 
+  .alloc-list { display: flex; flex-direction: column; }
+  .alloc-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--border-hairline); }
+  .alloc-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .alloc-row:first-child { padding-top: 0; }
+  .alloc-swatch { width: 10px; height: 10px; border-radius: var(--radius-pill); flex-shrink: 0; }
+  .alloc-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+  .alloc-note { font-size: var(--fs-micro); color: var(--text-tertiary); margin-top: 1px; }
+  .alloc-amt { font-family: var(--font-mono); font-weight: var(--fw-bold); font-size: var(--fs-sm); white-space: nowrap; }
+
   /* ---- Portfolio screen (v4 — dual hero + sectioned insight column) --------- */
   .hero-toggle { display: flex; align-items: baseline; gap: var(--space-3); margin-top: var(--space-2); cursor: pointer; user-select: none; flex-wrap: wrap; }
   .hero-toggle-value { font-family: var(--font-mono); font-weight: var(--fw-bold); font-size: var(--fs-heading); }
@@ -435,6 +444,7 @@ import { epfHistoryVinod } from './mock-data/epf-history.js';
 import { BENCHMARKS } from './mock-data/market-data.js';
 import { creditCardStatements } from './mock-data/credit-card-statements.js';
 import { creditCardTransactions } from './mock-data/credit-card-transactions.js';
+import { monthlyBudget, CATEGORY_META } from './mock-data/budget.js';
 
 // ============================================================
 // 07  Formatters — currency, %, dates, locale
@@ -2107,7 +2117,7 @@ function GoalPlanScreen() {
         <div>
           <div class="insight-section-title"><${Icon} name="wallet" size=${13} />What actually moves the outcome</div>
           <${Card}>
-            <div class="insight-body">Under base-case returns, hitting ₹20 Cr in exactly 10 years needs a starting SIP of <b>${formatINR(model.requiredSip)}</b>/month — a modest step up from ₹2.34L, because the EPF contributions and May lumpsum are already doing real work toward the goal.</div>
+            <div class="insight-body">Under base-case returns, hitting ₹20 Cr in exactly 10 years needs a starting SIP of <b>${formatINR(model.requiredSip)}</b>/month — a modest step up from ₹2.34L, because the EPF contributions and May lumpsum are already doing real work toward the goal. See the <b>Budget</b> tab for where that extra money would actually have to come from — the current SIP is already the household's entire monthly surplus, not idle cash.</div>
           <//>
         </div>
 
@@ -2153,6 +2163,112 @@ function GoalPlanScreen() {
 }
 
 // ============================================================
+// 13b  Screen: Budget — real household income/outflow breakdown.
+// First real income figure Mina has ever had (see mock-data/budget.js) — closes a gap flagged
+// repeatedly since the first build ("income, true savings rate, investment-vs-spending
+// reconciliation aren't computable"). A single representative month, not a trend yet.
+// ============================================================
+function BudgetScreen() {
+  const { income, outflows } = monthlyBudget;
+  const totalOutflow = outflows.reduce((s, o) => s + (o.amount || 0), 0);
+  const unaccounted = income - totalOutflow;
+  const byCategory = {};
+  for (const o of outflows) {
+    byCategory[o.category] = (byCategory[o.category] || 0) + (o.amount || 0);
+  }
+  const categoryGroups = Object.entries(byCategory).map(([key, amount]) => ({
+    key: CATEGORY_META[key].label, weight: amount / income, color: CATEGORY_META[key].color, amount,
+  })).sort((a, b) => b.amount - a.amount);
+  const investedTotal = byCategory.investment || 0;
+  const savingsRate = investedTotal / income;
+  const mfOnlyRate = (outflows.find(o => o.key === 'mf_sip')?.amount || 0) / income;
+
+  // How much more the household would need to save/invest for the Goal plan's base case to land
+  // in exactly 10 years — reuses the same gpTotal/scenario machinery as the Goal tab, not a
+  // separately hardcoded figure.
+  const gap = useMemo(() => {
+    let lo = 0, hi = 10000000;
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (gpTotal(GOAL_PLAN.scenarios.base, GOAL_PLAN.months, mid) < GOAL_PLAN.goal) lo = mid; else hi = mid; }
+    const requiredSip = (lo + hi) / 2;
+    return requiredSip - GOAL_PLAN.sipStart;
+  }, []);
+
+  const missingAmc = outflows.some(o => o.amount == null);
+
+  return html`
+    <div>
+      <div class="goal-hero-row">
+        <${Card}>
+          <div class="hero-card-label">Monthly income</div>
+          <div class="hero-card-value tabular">${formatINR(income)}</div>
+          <div class="hero-toggle-note">One representative month, user-provided ${monthlyBudget.as_of}</div>
+        <//>
+        <${Card}>
+          <div class="hero-card-label">Investment / savings</div>
+          <div class="hero-card-value tabular">${formatINR(investedTotal)}</div>
+          <div class="hero-toggle-note">${(savingsRate * 100).toFixed(0)}% of income — ${(mfOnlyRate * 100).toFixed(0)}% into the equity SIP, the rest into savings-linked insurance</div>
+        <//>
+        <${Card}>
+          <div class="hero-card-label">Fixed obligations</div>
+          <div class="hero-card-value tabular">${formatINR((byCategory.debt || 0) + (byCategory.family || 0))}</div>
+          <div class="hero-toggle-note">House loan EMI + parents transfer — not really discretionary</div>
+        <//>
+        <${Card}>
+          <div class="hero-card-label">Unaccounted</div>
+          <div class="hero-card-value tabular">${formatINR(unaccounted)}</div>
+          <div class="hero-toggle-note">${missingAmc ? 'AMC/cleaning amount wasn\'t given — this gap is that, not a real surplus' : 'Every rupee of income is accounted for'}</div>
+        <//>
+      </div>
+
+      <div class="insights-col">
+        <div>
+          <div class="insight-section-title"><${Icon} name="chart" size=${13} />Where it goes</div>
+          <${Card}>
+            <div class="mini-alloc" style="cursor:default">
+              <${Donut} groups=${categoryGroups} size=${120} strokeW=${20} />
+              <div class="mini-alloc-legend">
+                ${categoryGroups.map(g => html`<div class="mini-alloc-item" key=${g.key}><span class="mini-alloc-dot" style=${{ background: `var(--${g.color}-500)` }} /><span class="mini-alloc-name">${g.key}</span><span class="mini-alloc-pct tabular">${(g.weight * 100).toFixed(0)}%</span></div>`)}
+              </div>
+            </div>
+          <//>
+        </div>
+
+        <div>
+          <div class="insight-section-title"><${Icon} name="wallet" size=${13} />Full breakdown</div>
+          <${Card}>
+            <div class="alloc-list">
+              ${outflows.slice().sort((a, b) => (b.amount || 0) - (a.amount || 0)).map(o => html`
+                <div class="alloc-row" key=${o.key}>
+                  <span class="alloc-swatch" style="background:var(--${CATEGORY_META[o.category].color}-500)"></span>
+                  <div style="flex:1;">
+                    <div class="alloc-name">${o.label}</div>
+                    <div class="alloc-note">${CATEGORY_META[o.category].label}</div>
+                  </div>
+                  <div class="alloc-amt">${o.amount == null ? '— not given' : formatINR(o.amount)}</div>
+                </div>
+              `)}
+            </div>
+          <//>
+        </div>
+
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="flag" size=${13} />What this means for the ₹20 Cr goal</div>
+          <${Card}>
+            <div class="insight-body">This household already invests <b>${formatINR(investedTotal)}/month (${(savingsRate * 100).toFixed(0)}%)</b> — the ₹2,34,000 equity SIP tracked in the Goal tab is the entire surplus after every other line item above, not money sitting idle. Hitting ₹20 Cr in exactly 10 years under base-case returns needs about <b>${formatINR(gap)}/month more</b> than that — which has to come from one of the categories on the left (or from income growth), not from "found" money. Travel (${formatINR(byCategory.discretionary - (outflows.find(o => o.key === 'subscriptions')?.amount || 0))}) and subscriptions are the only genuinely discretionary lines here; the EMI and parents transfer are fixed obligations, not levers.</div>
+          <//>
+        </div>
+
+        <div class="span-2">
+          <div class="gap-note">
+            <b>Gaps, not fabricated:</b> this is one representative month from you directly, not a bank-statement feed — no month-over-month trend exists yet. AMC/cleaning had no amount given, left blank rather than guessed. The ₹1,32,000 house loan EMI implies a real home loan that isn't tracked as a liability anywhere in net worth yet (no principal, outstanding balance, or property value on file) — a real gap worth closing if you want net worth to reflect the loan, not just the EMI's drag on cash flow.
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
 // 14–15  Screens: Add / Settings — not built yet.
 // ============================================================
 function ComingSoonScreen({ name, stage }) {
@@ -2169,6 +2285,7 @@ const NAV_ITEMS = [
   { id: 'today', label: 'Today', icon: 'home' },
   { id: 'portfolio', label: 'Portfolio', icon: 'chart' },
   { id: 'insights', label: 'Insights', icon: 'bulb' },
+  { id: 'budget', label: 'Budget', icon: 'wallet' },
   { id: 'goal', label: 'Goal', icon: 'flag' },
 ];
 
@@ -2206,8 +2323,9 @@ function AppShell() {
         ${tab === 'portfolio' && html`<${PortfolioScreen} onNavigate=${setTab} />`}
         ${tab === 'insights' && html`<${InsightsScreen} />`}
         ${tab === 'money' && html`<${MoneyScreen} />`}
+        ${tab === 'budget' && html`<${BudgetScreen} />`}
         ${tab === 'goal' && html`<${GoalPlanScreen} />`}
-        ${tab !== 'today' && tab !== 'portfolio' && tab !== 'insights' && tab !== 'money' && tab !== 'goal' && html`<${ComingSoonScreen} name=${current.label} stage=${current.stage} />`}
+        ${tab !== 'today' && tab !== 'portfolio' && tab !== 'insights' && tab !== 'money' && tab !== 'budget' && tab !== 'goal' && html`<${ComingSoonScreen} name=${current.label} stage=${current.stage} />`}
       </div>
     </div>
   `;
