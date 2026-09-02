@@ -18,6 +18,7 @@ export const accounts = {
   acc_keerthana_mf: { id: 'acc_keerthana_mf', member_id: 'mem_keerthana', institution: 'CAMS/KFintech (6 AMCs)', type: 'Mutual funds' },
   acc_keerthana_gold: { id: 'acc_keerthana_gold', member_id: 'mem_keerthana', institution: 'HDFC Gold ETF', type: 'Commodities' },
   acc_keerthana_drivewealth: { id: 'acc_keerthana_drivewealth', member_id: 'mem_keerthana', institution: 'DriveWealth', type: 'Foreign brokerage' },
+  acc_household_realestate: { id: 'acc_household_realestate', member_id: 'mem_vinod', institution: 'Direct ownership (Nikoo Homes, Bangalore)', type: 'Real estate' },
 };
 
 export const positions = [
@@ -83,19 +84,35 @@ export const positions = [
   { id: 'pos_k_us_7', account_id: 'acc_keerthana_drivewealth', instrument_id: 'inst_avgo', current_value: 75149.82, cost_basis_usd: 797.64, unrealized_gain: -552.59, units: 2.1419, nav: 369.68, price_usd: 369.68, nav_asof: '2026-09-02 (Yahoo Finance)' },
   { id: 'pos_k_us_8', account_id: 'acc_keerthana_drivewealth', instrument_id: 'inst_alab', current_value: 91630.41, cost_basis_usd: 1276.30, unrealized_gain: -29500.67, units: 3.4492, nav: 279.91, price_usd: 279.91, nav_asof: '2026-09-02 (Yahoo Finance)' },
   { id: 'pos_k_us_9', account_id: 'acc_keerthana_drivewealth', instrument_id: 'inst_asml', current_value: 120359.54, cost_basis_usd: 1392.06, unrealized_gain: -11758.09, units: 0.7616, nav: 1665.14, price_usd: 1665.14, nav_asof: '2026-09-02 (Yahoo Finance)' },
+
+  // Real estate — added 2026-09-02, user-provided (not a statement/screenshot pull). `units` is
+  // sqft and `nav` is the user's own stated market rate per sqft, so current_value = units × nav is
+  // checkable the same way every other holding in this file is (see "Display convention: NAV and
+  // quantity" in CLAUDE.md). No purchase price/date on file, so cost_basis/unrealized_gain are null
+  // — same convention as the RSU, not fabricated. The Nikoo Homes 4 studio is explicitly loan-free
+  // per the user; the Nikoo Homes 1 flat carries the 3 loans in mock-data/liabilities.js.
+  { id: 'pos_realestate_1', account_id: 'acc_household_realestate', instrument_id: 'inst_nikoo_homes_1_flat', current_value: 28404000, cost_basis: null, unrealized_gain: null, units: 2104, nav: 13500 },
+  { id: 'pos_realestate_2', account_id: 'acc_household_realestate', instrument_id: 'inst_nikoo_homes_4_studio', current_value: 5812500, cost_basis: null, unrealized_gain: null, units: 465, nav: 12500 },
 ];
 
 export const PRICE_ASOF = { date: '2026-09-02', usd_inr: 94.908, source: 'MF NAVs: AMFI official daily NAV file (portal.amfiindia.com), matched by ISIN, dated 2026-09-01. Stocks/RSU/FX/Gold ETF: Yahoo Finance real-time quote API (query1.finance.yahoo.com), matched by ticker, pulled 2026-09-02.' };
 
 // Sum of every position's current_value. All 11 MF positions use AMFI's official NAV file by ISIN.
-// All 20 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker — every
-// priced position in the household traces to one of exactly two authoritative sources, re-pulled a
-// month after the first pass, which is what makes delta_month_pct below a real number.
+// All 20 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker. The 2 real
+// estate positions (added 2026-09-02) are user-provided sqft × market-rate estimates, not from
+// either of those two sources — flagged separately since they're a different evidentiary standard.
+//
+// current_total went 41,156,535 → 75,373,035 purely because real estate (₹3,42,16,500) was added to
+// tracking for the first time this pass — that is NOT a market move, so delta_month_pct below
+// deliberately still compares only the asset set that existed at both 2026-08-02 and 2026-09-02
+// (i.e. excludes real estate from both sides of the comparison). Don't recompute delta_month_pct
+// against the real-estate-inclusive total — that would misrepresent "we started tracking a new
+// asset" as an 80%+ monthly gain.
 export const householdTotals = {
-  current_total: 41156535,
+  current_total: 75373035,
   delta_today: 42300,        // SYNTHETIC — no daily snapshot pipeline yet (Stage 8)
   delta_today_pct: 0.0011,   // SYNTHETIC
-  delta_month_pct: 0.01119,  // REAL — (41156535 - 40701024) / 40701024, the actual 2026-08-02 → 2026-09-02 move
+  delta_month_pct: 0.01119,  // REAL, ex-real-estate — (41156535 - 40701024) / 40701024, the actual 2026-08-02 → 2026-09-02 move on the assets tracked at both dates
   xirr: 0.152,               // SYNTHETIC — real per-position XIRR needs cashflow-dated lot history
   twr: 0.161,                // SYNTHETIC
   pending_pricing_count: 0,

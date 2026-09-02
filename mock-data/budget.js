@@ -9,9 +9,17 @@
 // index.html / investment-plan-20cr.html) — this is the same real number in both places, not a
 // coincidence to reconcile away.
 //
-// "House Loan EMI" implies a real home loan that isn't tracked as a liability anywhere in net worth
-// yet (no loan principal/outstanding balance/property value is on file) — flagged as a gap, not
-// fabricated. "AMC Cleaning" amount wasn't given — left as null rather than guessed.
+// "House Loan EMI" is real — see mock-data/liabilities.js (added 2026-09-02) for the actual 3 loan
+// accounts behind it; the two now sit in the Debt tab, cross-checked against each other (computed
+// EMI from the loan terms comes to ~₹1,30,314, within rounding of this real ₹1,32,000 figure).
+// "AMC Cleaning" amount wasn't given — left as null rather than guessed.
+//
+// Correction, 2026-09-02: "Insurance (savings-linked)" and "Car insurance (savings-linked)" were
+// originally miscategorised as `investment` — the user clarified both are money set aside monthly
+// toward a car insurance premium (paid annually as a lump sum), not a wealth-building investment.
+// Recategorised to their own `insurance` bucket. This changes the real savings-rate figure quoted
+// in CLAUDE.md's Budget-tab changelog entry (was ~48% including these; ~46.25% correctly excluding
+// them, i.e. just the MF SIP) — the MF-only figure was always the more defensible one anyway.
 
 export const monthlyBudget = {
   as_of: '2026-09-02',
@@ -23,8 +31,8 @@ export const monthlyBudget = {
     { key: 'house_loan_emi', label: 'House loan EMI', amount: 132000, category: 'debt' },
     { key: 'living', label: 'Living', amount: 43000, category: 'essential' },
     { key: 'home_maintenance', label: 'Home maintenance', amount: 9600, category: 'essential' },
-    { key: 'insurance_saving', label: 'Insurance (savings-linked)', amount: 7000, category: 'investment' },
-    { key: 'car_insurance_saving', label: 'Car insurance (savings-linked)', amount: 1700, category: 'investment' },
+    { key: 'insurance_saving', label: 'Car insurance premium (saved monthly)', amount: 7000, category: 'insurance' },
+    { key: 'car_insurance_saving', label: 'Car insurance premium (saved monthly, separate line)', amount: 1700, category: 'insurance' },
     { key: 'car_service', label: 'Car service', amount: 1700, category: 'essential' },
     { key: 'subscriptions', label: 'Subscriptions', amount: 3000, category: 'discretionary' },
     { key: 'amc_cleaning', label: 'AMC / cleaning', amount: null, category: 'essential' },
@@ -39,4 +47,5 @@ export const CATEGORY_META = {
   essential: { label: 'Essential living', color: 'bronze' },
   discretionary: { label: 'Discretionary', color: 'lilac' },
   family: { label: 'Family support', color: 'teal' },
+  insurance: { label: 'Insurance premiums (sinking fund)', color: 'amber' },
 };

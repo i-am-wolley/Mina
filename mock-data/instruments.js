@@ -83,4 +83,11 @@ export const instruments = {
   inst_avgo: { id: 'inst_avgo', isin: 'US11135F1012', name: 'Broadcom Inc.', l1: 'Equity', l2: 'Direct listed', l3: 'Foreign stock', currency: 'USD', source: 'DriveWealth', sector: 'Semiconductors', tech: { week52High: 495.0, week52Low: 281.87, dayHigh: 399.92, dayLow: 379.71, volume: 20391003, asof: '2026-08-02 (Yahoo Finance)' } },
   inst_alab: { id: 'inst_alab', isin: 'US04627M1062', name: 'Astera Labs, Inc.', l1: 'Equity', l2: 'Direct listed', l3: 'Foreign stock', currency: 'USD', source: 'DriveWealth', sector: 'Semiconductors (Connectivity)', tech: { week52High: 499.476, week52Low: 97.89, dayHigh: 341.91, dayLow: 305.02, volume: 5329350, asof: '2026-08-02 (Yahoo Finance)' } },
   inst_asml: { id: 'inst_asml', isin: 'US0398071012', name: 'ASML Holding N.V. (NY Registry Shares)', l1: 'Equity', l2: 'Direct listed', l3: 'Foreign stock', currency: 'USD', source: 'DriveWealth', sector: 'Semiconductor Equipment', tech: { week52High: 1999.96, week52Low: 684.24, dayHigh: 1692.15, dayLow: 1624.71, volume: 1601445, asof: '2026-08-02 (Yahoo Finance)' } },
+
+  // ---- Real estate — added 2026-09-02, user-provided (not a statement/screenshot pull). Purchase
+  // price/date aren't on file, so cost_basis is null throughout (same convention as the RSU) —
+  // no real appreciation/gain figure is fabricated for these. Ownership attribution (which member's
+  // account) is unconfirmed; filed under Vinod pending clarification, same as the household's FDs.
+  inst_nikoo_homes_1_flat: { id: 'inst_nikoo_homes_1_flat', isin: null, name: 'Nikoo Homes 1, Bangalore — Unit 100704', l1: 'Real Estate', l2: 'Residential', l3: 'Apartment', currency: 'INR', source: 'user-provided 2026-09-02', sqft: 2104, rate_per_sqft_asof: '2026-09-02 (user-provided market estimate, not an independent valuation)' },
+  inst_nikoo_homes_4_studio: { id: 'inst_nikoo_homes_4_studio', isin: null, name: 'Nikoo Homes 4, Bangalore — Studio', l1: 'Real Estate', l2: 'Residential', l3: 'Studio Apartment', currency: 'INR', source: 'user-provided 2026-09-02', sqft: 465, rate_per_sqft_asof: '2026-09-02 (user-provided market estimate, not an independent valuation)' },
 };
