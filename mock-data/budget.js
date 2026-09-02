@@ -14,12 +14,17 @@
 // EMI from the loan terms comes to ~₹1,30,314, within rounding of this real ₹1,32,000 figure).
 // "AMC Cleaning" amount wasn't given — left as null rather than guessed.
 //
-// Correction, 2026-09-02: "Insurance (savings-linked)" and "Car insurance (savings-linked)" were
-// originally miscategorised as `investment` — the user clarified both are money set aside monthly
-// toward a car insurance premium (paid annually as a lump sum), not a wealth-building investment.
-// Recategorised to their own `insurance` bucket. This changes the real savings-rate figure quoted
-// in CLAUDE.md's Budget-tab changelog entry (was ~48% including these; ~46.25% correctly excluding
-// them, i.e. just the MF SIP) — the MF-only figure was always the more defensible one anyway.
+// Correction, 2026-09-02 (first pass): "Insurance (savings-linked)" and "Car insurance
+// (savings-linked)" were originally miscategorised as `investment` — recategorised to their own
+// `insurance` bucket after the user clarified neither is a wealth-building investment.
+//
+// Correction, 2026-09-02 (second pass): the ₹7,000 line specifically is parents' health insurance
+// premium (saved monthly toward an annual lump-sum payment), not car insurance as first assumed —
+// moved to `family` alongside the parents transfer, since that's what it actually is. Only the
+// ₹1,700 line is genuinely car insurance, now standing alone and folded into `essential` (a small,
+// personal-protection cost, not distinct enough to justify its own category). Real savings rate:
+// 46.25% (MF SIP only) — unaffected by this second correction, since neither line was ever counted
+// as investment after the first correction above.
 
 export const monthlyBudget = {
   as_of: '2026-09-02',
@@ -31,8 +36,8 @@ export const monthlyBudget = {
     { key: 'house_loan_emi', label: 'House loan EMI', amount: 132000, category: 'debt' },
     { key: 'living', label: 'Living', amount: 43000, category: 'essential' },
     { key: 'home_maintenance', label: 'Home maintenance', amount: 9600, category: 'essential' },
-    { key: 'insurance_saving', label: 'Car insurance premium (saved monthly)', amount: 7000, category: 'insurance' },
-    { key: 'car_insurance_saving', label: 'Car insurance premium (saved monthly, separate line)', amount: 1700, category: 'insurance' },
+    { key: 'insurance_saving', label: "Parents' health insurance premium (saved monthly)", amount: 7000, category: 'family' },
+    { key: 'car_insurance_saving', label: 'Car insurance premium (saved monthly)', amount: 1700, category: 'essential' },
     { key: 'car_service', label: 'Car service', amount: 1700, category: 'essential' },
     { key: 'subscriptions', label: 'Subscriptions', amount: 3000, category: 'discretionary' },
     { key: 'amc_cleaning', label: 'AMC / cleaning', amount: null, category: 'essential' },
@@ -47,5 +52,4 @@ export const CATEGORY_META = {
   essential: { label: 'Essential living', color: 'bronze' },
   discretionary: { label: 'Discretionary', color: 'lilac' },
   family: { label: 'Family support', color: 'teal' },
-  insurance: { label: 'Insurance premiums (sinking fund)', color: 'amber' },
 };

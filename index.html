@@ -446,6 +446,7 @@ import { creditCardStatements } from './mock-data/credit-card-statements.js';
 import { creditCardTransactions } from './mock-data/credit-card-transactions.js';
 import { monthlyBudget, CATEGORY_META } from './mock-data/budget.js';
 import { liabilities } from './mock-data/liabilities.js';
+import { realEstate } from './mock-data/real-estate.js';
 
 // ============================================================
 // 07  Formatters — currency, %, dates, locale
@@ -1918,26 +1919,23 @@ function MoneyScreen() {
 // is expected to compute, as long as every assumption stays named and visible.
 // Companion to investment-plan-20cr.html (same numbers, standalone doc + citations).
 // ============================================================
-// FD/EPF/Gold/Real Estate are looked up live from `positions` by account/id, not hardcoded
-// duplicates — a hardcoded copy of these drifted out of sync with a real reprice once already
-// (2026-09-02), silently misattributing a gold price move into the "market-linked existing"
-// bucket. Don't reintroduce hardcoded copies here even for a "quick" constant.
+// FD/EPF/Gold are looked up live from `positions` by account/id, not hardcoded duplicates — a
+// hardcoded copy of these three drifted out of sync with a real reprice once already (2026-09-02),
+// silently misattributing a gold price move into the "market-linked existing" bucket. Don't
+// reintroduce hardcoded copies here even for a "quick" constant.
+//
+// Real estate was briefly added as its own bucket here on 2026-09-02, then explicitly reverted the
+// same day — the user wants the ₹20 Cr goal to track investable/liquid wealth only, with immovable
+// property kept fully outside this plan (see the Debt & Immovable Assets tab instead). Don't
+// reintroduce a real-estate bucket into GOAL_PLAN without being asked again.
 const GOAL_PLAN_FD = positions.filter(p => p.account_id === 'acc_vinod_fd').reduce((s, p) => s + p.current_value, 0);
 const GOAL_PLAN_EPF_EXISTING = positions.find(p => p.id === 'pos_v_epf').current_value;
 const GOAL_PLAN_GOLD = positions.find(p => p.id === 'pos_k_gold').current_value;
-const GOAL_PLAN_REAL_ESTATE = positions.filter(p => p.account_id === 'acc_household_realestate').reduce((s, p) => s + p.current_value, 0);
 const GOAL_PLAN = {
   goal: 200000000,
   months: 120,
-  fd: GOAL_PLAN_FD, epfExisting: GOAL_PLAN_EPF_EXISTING, gold: GOAL_PLAN_GOLD, realEstate: GOAL_PLAN_REAL_ESTATE,
+  fd: GOAL_PLAN_FD, epfExisting: GOAL_PLAN_EPF_EXISTING, gold: GOAL_PLAN_GOLD,
   fdRate: 0.075, epfRate: 0.0825, goldRate: 0.08,
-  // Real estate appreciation: illustrative, not researched to the same standard as the other rates
-  // here — "5-7% annually going forward" is the forward-looking consensus for Bangalore residential
-  // (vs. an unsustainable ~12%/yr over the hot 2020-2025 window); base case uses the midpoint.
-  // Gross market value tracked here (not net of the linked loan) — the loan itself is serviced via
-  // the real EMI already excluded from investable surplus in the Budget tab, and its own payoff
-  // math lives in the Debt tab, not this growth projection. Simplification, disclosed.
-  realEstateRates: { optimistic: 0.10, base: 0.06, pessimistic: 0.02 },
   epfMonthlyContrib: 69400, // ₹34,700 employee + ₹34,700 employer, flat — no salary step-up modeled
   sipStart: 234000, stepup: 0.05,
   mayLumpsum: 1000000, // every May, invested in the same allocation as the monthly SIP
@@ -1948,7 +1946,7 @@ const GOAL_PLAN = {
     pessimistic: { existing: 0.02, sip: 0.0335, label: 'Pessimistic', tone: 'critical' },
   },
 };
-GOAL_PLAN.marketExisting = householdTotals.current_total - GOAL_PLAN.fd - GOAL_PLAN.epfExisting - GOAL_PLAN.gold - GOAL_PLAN.realEstate;
+GOAL_PLAN.marketExisting = householdTotals.current_total - GOAL_PLAN.fd - GOAL_PLAN.epfExisting - GOAL_PLAN.gold;
 
 function gpFvLump(pv, rate, months) { return pv * Math.pow(1 + rate / 12, months); }
 function gpFvFlatAnnuity(monthly, rate, months) {
@@ -1966,30 +1964,29 @@ function gpFvMayLumpsums(rate, months) {
   while (mm <= months) { fv += GOAL_PLAN.mayLumpsum * Math.pow(1 + r, months - mm); mm += 12; }
   return fv;
 }
-function gpTotal(rates, months, sipStart = GOAL_PLAN.sipStart, scenarioName = 'base') {
+function gpTotal(rates, months, sipStart = GOAL_PLAN.sipStart) {
   const P = GOAL_PLAN;
   return gpFvLump(P.fd, P.fdRate, months) + gpFvLump(P.epfExisting, P.epfRate, months) + gpFvFlatAnnuity(P.epfMonthlyContrib, P.epfRate, months)
-       + gpFvLump(P.gold, P.goldRate, months) + gpFvLump(P.realEstate, P.realEstateRates[scenarioName], months)
-       + gpFvLump(P.marketExisting, rates.existing, months)
+       + gpFvLump(P.gold, P.goldRate, months) + gpFvLump(P.marketExisting, rates.existing, months)
        + gpFvGrowingSip(sipStart, rates.sip, P.stepup, months) + gpFvMayLumpsums(rates.sip, months);
 }
-function gpYearSeries(rates, scenarioName) {
+function gpYearSeries(rates) {
   const P = GOAL_PLAN;
   const rows = [{ year: 2026, value: householdTotals.current_total }];
-  let sipMonthly = P.sipStart, fd = P.fd, epfE = P.epfExisting, epfC = 0, gold = P.gold, realEstate = P.realEstate, mkt = P.marketExisting, sipCorpus = 0, mayCorpus = 0;
-  const rFD = P.fdRate / 12, rEPF = P.epfRate / 12, rGold = P.goldRate / 12, rRealEstate = P.realEstateRates[scenarioName] / 12, rEx = rates.existing / 12, rSip = rates.sip / 12;
+  let sipMonthly = P.sipStart, fd = P.fd, epfE = P.epfExisting, epfC = 0, gold = P.gold, mkt = P.marketExisting, sipCorpus = 0, mayCorpus = 0;
+  const rFD = P.fdRate / 12, rEPF = P.epfRate / 12, rGold = P.goldRate / 12, rEx = rates.existing / 12, rSip = rates.sip / 12;
   for (let m = 1; m <= P.months; m++) {
-    fd *= (1 + rFD); epfE *= (1 + rEPF); gold *= (1 + rGold); realEstate *= (1 + rRealEstate); mkt *= (1 + rEx);
+    fd *= (1 + rFD); epfE *= (1 + rEPF); gold *= (1 + rGold); mkt *= (1 + rEx);
     epfC = epfC * (1 + rEPF) + P.epfMonthlyContrib;
     sipCorpus = sipCorpus * (1 + rSip) + sipMonthly;
     mayCorpus = mayCorpus * (1 + rSip) + (P.mayMonths.includes(m) ? P.mayLumpsum : 0);
-    if (m % 12 === 0) { sipMonthly *= (1 + P.stepup); rows.push({ year: 2026 + m / 12, value: fd + epfE + epfC + gold + realEstate + mkt + sipCorpus + mayCorpus }); }
+    if (m % 12 === 0) { sipMonthly *= (1 + P.stepup); rows.push({ year: 2026 + m / 12, value: fd + epfE + epfC + gold + mkt + sipCorpus + mayCorpus }); }
   }
   return rows;
 }
-function gpMonthsToGoal(rates, scenarioName) {
+function gpMonthsToGoal(rates) {
   let m = 1;
-  while (gpTotal(rates, m, GOAL_PLAN.sipStart, scenarioName) < GOAL_PLAN.goal && m < 40 * 12) m++;
+  while (gpTotal(rates, m) < GOAL_PLAN.goal && m < 40 * 12) m++;
   return m;
 }
 
@@ -2032,30 +2029,16 @@ const GOAL_FRAMEWORK = [
 
 function GoalPlanScreen() {
   const model = useMemo(() => {
-    const finals = {}, monthsTo = {}, series = {}, liquidFinals = {};
+    const finals = {}, monthsTo = {}, series = {};
     for (const [name, rates] of Object.entries(GOAL_PLAN.scenarios)) {
-      const ys = gpYearSeries(rates, name);
+      const ys = gpYearSeries(rates);
       series[name] = ys;
       finals[name] = ys[ys.length - 1].value;
-      monthsTo[name] = gpMonthsToGoal(rates, name);
-      // Real estate (₹3.42 Cr gross today) is illiquid — it can't be rebalanced or spent toward
-      // the goal the way the rest of this corpus can. Break it back out so "on track" doesn't
-      // quietly mean "on track only because a house counts."
-      liquidFinals[name] = finals[name] - gpFvLump(GOAL_PLAN.realEstate, GOAL_PLAN.realEstateRates[name], GOAL_PLAN.months);
+      monthsTo[name] = gpMonthsToGoal(rates);
     }
     let lo = 0, hi = 10000000;
-    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (gpTotal(GOAL_PLAN.scenarios.base, GOAL_PLAN.months, mid, 'base') < GOAL_PLAN.goal) lo = mid; else hi = mid; }
-    const requiredSip = (lo + hi) / 2;
-    // Same binary search, but solved against the liquid-only total (real estate stripped out) —
-    // the more meaningful "how much more should I actually invest" question now that real estate
-    // alone can carry the headline total past the goal.
-    let lo2 = 0, hi2 = 10000000;
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo2 + hi2) / 2;
-      const liquidAtMid = gpTotal(GOAL_PLAN.scenarios.base, GOAL_PLAN.months, mid, 'base') - gpFvLump(GOAL_PLAN.realEstate, GOAL_PLAN.realEstateRates.base, GOAL_PLAN.months);
-      if (liquidAtMid < GOAL_PLAN.goal) lo2 = mid; else hi2 = mid;
-    }
-    return { finals, monthsTo, series, liquidFinals, requiredSip, liquidRequiredSip: (lo2 + hi2) / 2 };
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (gpTotal(GOAL_PLAN.scenarios.base, GOAL_PLAN.months, mid) < GOAL_PLAN.goal) lo = mid; else hi = mid; }
+    return { finals, monthsTo, series, requiredSip: (lo + hi) / 2 };
   }, []);
 
   const seriesColor = { optimistic: 'var(--sage-500)', base: 'var(--accent)', pessimistic: 'var(--danger-500)' };
@@ -2072,7 +2055,7 @@ function GoalPlanScreen() {
         <${Card}>
           <div class="hero-card-label">Household today</div>
           <div class="hero-card-value tabular">${formatINR(householdTotals.current_total)}</div>
-          <div class="hero-toggle-note">Includes ${formatINR(GOAL_PLAN.realEstate)} real estate (2 properties) — see Debt tab</div>
+          <div class="hero-toggle-note">Investable/liquid net worth — immovable property is tracked separately, see Debt & Immovable Assets</div>
         <//>
         <${Card}>
           <div class="hero-card-label">New monthly SIP</div>
@@ -2082,7 +2065,7 @@ function GoalPlanScreen() {
         <${Card}>
           <div class="hero-card-label">Base case — 10yr</div>
           <div class="hero-card-value tabular">${formatINR(model.finals.base)}</div>
-          <div class="hero-toggle-note">${((model.finals.base / GOAL_PLAN.goal) * 100).toFixed(0)}% of goal total · ${formatINR(model.liquidFinals.base)} of that is liquid</div>
+          <div class="hero-toggle-note">${((model.finals.base / GOAL_PLAN.goal) * 100).toFixed(0)}% of goal · full goal ~year ${(model.monthsTo.base / 12).toFixed(1)}</div>
         <//>
       </div>
 
@@ -2100,19 +2083,11 @@ function GoalPlanScreen() {
               ${Object.entries(GOAL_PLAN.scenarios).map(([name, rates]) => html`
                 <div key=${name}>
                   <div class="trend-stat-value tabular ${rates.tone === 'gain' ? 'up' : rates.tone === 'critical' ? 'down' : ''}">${formatINR(model.finals[name])}</div>
-                  <div class="trend-stat-label">${rates.label} total · goal ~year ${(model.monthsTo[name] / 12).toFixed(1)}</div>
+                  <div class="trend-stat-label">${rates.label} · goal ~year ${(model.monthsTo[name] / 12).toFixed(1)}</div>
                 </div>
               `)}
             </div>
-            <div class="trend-stats-row" style="margin-top:var(--space-3);">
-              ${Object.entries(GOAL_PLAN.scenarios).map(([name, rates]) => html`
-                <div key=${name}>
-                  <div class="trend-stat-value tabular" style="font-size:15px;color:var(--text-secondary);">${formatINR(model.liquidFinals[name])}</div>
-                  <div class="trend-stat-label">${rates.label} liquid (ex-real estate)</div>
-                </div>
-              `)}
-            </div>
-            <div class="trend-note">FD, the existing EPF balance, Gold, and real estate all compound at their own real rates in every scenario (7.5% / 8.25% / 8% / real-estate-specific resp.) — only the market-linked existing corpus and new money (SIP + May lumpsum) flex with the full scenario. The two rows above are the same numbers two ways: <b>total</b> includes ~₹3.42 Cr of real estate (illiquid — can't be rebalanced or redirected toward this goal the way the rest of the corpus can); <b>liquid</b> strips it back out. The goal now looks comfortably on track in total terms mostly because of the house, not because the investable plan changed — worth deciding whether ₹20 Cr was meant as total net worth or investable wealth. Full assumptions below.</div>
+            <div class="trend-note">FD, the existing EPF balance, and Gold compound at their own real rates in every scenario (7.5% / 8.25% / 8% resp.) — only the market-linked existing corpus and new money (SIP + May lumpsum) flex with the scenario. Immovable property (2 real properties, see Debt & Immovable Assets) is deliberately excluded from this plan entirely, not just from one bucket — this ₹20 Cr goal is investable/liquid wealth on top of what those properties are worth. Full assumptions below.</div>
           <//>
         </div>
 
@@ -2149,7 +2124,7 @@ function GoalPlanScreen() {
         <div>
           <div class="insight-section-title"><${Icon} name="wallet" size=${13} />What actually moves the outcome</div>
           <${Card}>
-            <div class="insight-body">Two different answers to "how much more should I invest," depending which ₹20 Cr you mean. Counting the house, base-case <b>total</b> wealth already clears the goal at the current SIP — the required starting SIP is only <b>${formatINR(model.requiredSip)}</b>/month, real estate is doing the heavy lifting. Counting only what's actually investable, the <b>liquid</b>-wealth version still needs <b>${formatINR(model.liquidRequiredSip)}</b>/month to land exactly on ₹20 Cr in 10 years — close to the pre-real-estate answer, since a house's appreciation was never going to fund the difference in cash. See the <b>Budget</b> tab for where that extra money would actually have to come from — the current SIP is already the household's entire monthly surplus, not idle cash. See <b>Debt</b> for the loan against the house and the debt-vs-invest math.</div>
+            <div class="insight-body">Under base-case returns, hitting ₹20 Cr in exactly 10 years needs a starting SIP of <b>${formatINR(model.requiredSip)}</b>/month — a step up from ₹2.34L, because the EPF contributions and May lumpsum are already doing real work toward the goal. See the <b>Budget</b> tab for where that extra money would actually have to come from — the current SIP is already the household's entire monthly surplus, not idle cash. This ₹20 Cr goal is investable/liquid wealth only — the 2 real properties are tracked separately in <b>Debt & Immovable Assets</b> and don't count toward it.</div>
           <//>
         </div>
 
@@ -2186,12 +2161,70 @@ function GoalPlanScreen() {
 
         <div class="span-2">
           <div class="gap-note">
-            <b>Assumptions:</b> FD 7.5% (value-weighted, contracted) · EPF balance 8.25% (statutory) · EPF new contributions ₹69.4K/mo (₹34.7K employee + ₹34.7K employer, flat, no salary step-up modeled) · Gold 8% (long-run trend, not 2026's bull spike) · <b>Real estate 10% / 6% / 2%</b> (illustrative, not researched to the same standard as the others — base case uses "5–7% annually going forward" as the forward-looking consensus for Bangalore residential, not the ~12%/yr seen over the hot 2020–2025 window; gross market value tracked, not net of the linked loan — see Debt tab) · existing market-linked corpus optimistic 17% / base 10% / pessimistic 2% (wide spread — reflects real AI/semis + smallcap concentration) · new SIP + May lumpsum optimistic 14.3% / base 9.1% / pessimistic 3.35% (bottom-up blend of the allocation above). Not licensed financial advice — a modeling exercise from your real portfolio and public research; the standalone companion sheet (investment-plan-20cr.html) does not yet include real estate/debt, so the two will show different totals until it's updated.
+            <b>Assumptions:</b> FD 7.5% (value-weighted, contracted) · EPF balance 8.25% (statutory) · EPF new contributions ₹69.4K/mo (₹34.7K employee + ₹34.7K employer, flat, no salary step-up modeled) · Gold 8% (long-run trend, not 2026's bull spike) · existing market-linked corpus optimistic 17% / base 10% / pessimistic 2% (wide spread — reflects real AI/semis + smallcap concentration) · new SIP + May lumpsum optimistic 14.3% / base 9.1% / pessimistic 3.35% (bottom-up blend of the allocation above). Immovable property (2 real properties, ~₹3.42 Cr, see Debt & Immovable Assets) is deliberately excluded from this goal entirely, by request — it isn't a bucket in this model at all. Not licensed financial advice — a modeling exercise from your real portfolio and public research, same numbers as the standalone companion sheet with full citations.
           </div>
         </div>
       </div>
     </div>
   `;
+}
+
+// Budget health insights — computed live from real thresholds, never a hardcoded verdict. Framed as
+// observations, not directives (AI boundaries: explain/classify, never recommend a specific
+// financial action) — each one states what the number is and what it implies, leaves the decision
+// to the user.
+function budgetHealthInsights(income, byCategory, outflows) {
+  const cards = [];
+  const savingsRate = (byCategory.investment || 0) / income;
+  const emiRatio = (byCategory.debt || 0) / income;
+  const essentialRatio = (byCategory.essential || 0) / income;
+  const familyTotal = byCategory.family || 0;
+
+  cards.push({
+    icon: 'trendUp', tone: savingsRate >= 0.40 ? 'gain' : savingsRate >= 0.25 ? '' : 'critical',
+    tag: 'Savings rate', title: `${(savingsRate * 100).toFixed(1)}% of income invested`,
+    body: savingsRate >= 0.40
+      ? `Exceptional by any common benchmark — most guidance treats 20% as good and 30%+ as excellent. This household is investing ${(savingsRate * 100).toFixed(0)}%, well past that bar.`
+      : savingsRate >= 0.25 ? `Solid — comfortably above the commonly-cited 20% benchmark for a healthy savings rate.`
+      : `Below the commonly-cited 20% benchmark for a healthy savings rate — worth understanding why before assuming it needs to change.`,
+  });
+
+  cards.push({
+    icon: 'wallet', tone: emiRatio > 0.40 ? 'critical' : emiRatio > 0.30 ? 'high' : '',
+    tag: 'EMI-to-income ratio', title: `${(emiRatio * 100).toFixed(1)}% of income to the home loan EMI`,
+    body: emiRatio > 0.40
+      ? `Above the ~40% level lenders generally treat as the ceiling for comfortable debt servicing — worth keeping an eye on if income ever dips.`
+      : emiRatio > 0.30 ? `Getting toward the upper end of typical debt-servicing guidance (~30–40%), though not alarming on its own.`
+      : `Within the commonly-cited comfortable range (under ~30–40% of income) for debt servicing — not overleveraged on this loan alone.`,
+  });
+
+  const discItems = outflows.filter(o => o.category === 'discretionary' && o.amount);
+  if (discItems.length) {
+    const largest = discItems.reduce((a, b) => (a.amount > b.amount ? a : b));
+    cards.push({
+      icon: 'flag', tone: '',
+      tag: 'Largest flexible lever', title: `${largest.label} — ${formatINR(largest.amount)}/month`,
+      body: `The single biggest genuinely discretionary line — everything else in "essential," "debt," and "family" is closer to fixed. Not a suggestion to cut it, just the honest answer to "where would flexibility come from if I wanted it."`,
+    });
+  }
+
+  if (familyTotal) {
+    cards.push({
+      icon: 'newspaper', tone: '',
+      tag: 'Family support', title: `${formatINR(familyTotal)}/month (${((familyTotal / income) * 100).toFixed(1)}% of income)`,
+      body: `Parents' transfer and health insurance premium combined — a real, quantified family commitment, distinct from the household's own lifestyle spend.`,
+    });
+  }
+
+  cards.push({
+    icon: 'chart', tone: essentialRatio <= 0.15 ? 'gain' : '',
+    tag: 'Essential living costs', title: `${(essentialRatio * 100).toFixed(1)}% of income on essentials`,
+    body: essentialRatio <= 0.15
+      ? `Lean relative to income — living, home maintenance, car service, and utilities together stay well under a fifth of income, no sign of lifestyle inflation creeping into the "needs" side of the budget.`
+      : `A meaningful share of income, though not unusual for a household this size.`,
+  });
+
+  return cards;
 }
 
 // ============================================================
@@ -2214,18 +2247,14 @@ function BudgetScreen() {
   const investedTotal = byCategory.investment || 0;
   const savingsRate = investedTotal / income;
   const mfOnlyRate = (outflows.find(o => o.key === 'mf_sip')?.amount || 0) / income;
+  const healthInsights = budgetHealthInsights(income, byCategory, outflows);
 
-  // How much more the household would need to save/invest for the Goal plan's LIQUID-wealth base
-  // case to land on ₹20 Cr in exactly 10 years — reuses the same gpTotal/scenario machinery as the
-  // Goal tab, not a separately hardcoded figure. Liquid (real-estate-excluded), not total, because
-  // that's the honest version of "how much more should I actually invest."
+  // How much more the household would need to save/invest for the Goal plan's base case to land
+  // in exactly 10 years — reuses the same gpTotal/scenario machinery as the Goal tab, not a
+  // separately hardcoded figure.
   const gap = useMemo(() => {
     let lo = 0, hi = 10000000;
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2;
-      const liquidAtMid = gpTotal(GOAL_PLAN.scenarios.base, GOAL_PLAN.months, mid, 'base') - gpFvLump(GOAL_PLAN.realEstate, GOAL_PLAN.realEstateRates.base, GOAL_PLAN.months);
-      if (liquidAtMid < GOAL_PLAN.goal) lo = mid; else hi = mid;
-    }
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (gpTotal(GOAL_PLAN.scenarios.base, GOAL_PLAN.months, mid) < GOAL_PLAN.goal) lo = mid; else hi = mid; }
     const requiredSip = (lo + hi) / 2;
     return requiredSip - GOAL_PLAN.sipStart;
   }, []);
@@ -2265,6 +2294,22 @@ function BudgetScreen() {
       </div>
 
       <div class="insights-col">
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="bulb" size=${13} />Are we spending a lot? Budget health</div>
+          <div class="insight-section-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-5);">
+            ${healthInsights.map((c, i) => html`
+              <div class="insight-card" key=${i}>
+                <span class="insight-icon ${c.tone ? `tone-${c.tone}` : ''}"><${Icon} name=${c.icon} size=${16} /></span>
+                <div class="card-body">
+                  <div class="insight-tag">${c.tag}</div>
+                  <div class="insight-title">${c.title}</div>
+                  <div class="insight-body">${c.body}</div>
+                </div>
+              </div>
+            `)}
+          </div>
+        </div>
+
         <div>
           <div class="insight-section-title"><${Icon} name="chart" size=${13} />Where it goes</div>
           <${Card}>
@@ -2306,7 +2351,7 @@ function BudgetScreen() {
         <div class="span-2">
           <div class="insight-section-title"><${Icon} name="flag" size=${13} />What this means for the ₹20 Cr goal</div>
           <${Card}>
-            <div class="insight-body">This household already invests <b>${formatINR(investedTotal)}/month (${(savingsRate * 100).toFixed(0)}%)</b> — the ₹2,34,000 equity SIP tracked in the Goal tab is the entire surplus after every other line item above, not money sitting idle. Counting only liquid wealth (the honest version of this question — see the Goal tab's total-vs-liquid breakout), hitting ₹20 Cr in exactly 10 years under base-case returns needs about <b>${formatINR(gap)}/month more</b> than that — which has to come from one of the categories on the left (or from income growth), not from "found" money. Travel (${formatINR(byCategory.discretionary - (outflows.find(o => o.key === 'subscriptions')?.amount || 0))}) and subscriptions are the only genuinely discretionary lines here; the EMI and parents transfer are fixed obligations, not levers.</div>
+            <div class="insight-body">This household already invests <b>${formatINR(investedTotal)}/month (${(savingsRate * 100).toFixed(0)}%)</b> — the ₹2,34,000 equity SIP tracked in the Goal tab is the entire surplus after every other line item above, not money sitting idle. Hitting ₹20 Cr in exactly 10 years under base-case returns needs about <b>${formatINR(gap)}/month more</b> than that — which has to come from one of the categories on the left (or from income growth), not from "found" money. Travel (${formatINR(byCategory.discretionary - (outflows.find(o => o.key === 'subscriptions')?.amount || 0))}) and subscriptions are the only genuinely discretionary lines here; the EMI and parents transfer are fixed obligations, not levers.</div>
           <//>
         </div>
 
@@ -2321,18 +2366,22 @@ function BudgetScreen() {
 }
 
 // ============================================================
-// 13c  Screen: Debt — real loans, real property, debt-vs-invest math.
+// 13c  Screen: Debt & Immovable Assets — real loans, real property, debt-vs-invest math.
 // The user's own idea, greenlit explicitly: given 3 real loan accounts (mock-data/liabilities.js)
-// and 2 real properties, compare each loan's real rate against the Goal plan's own new-money
-// scenario rates. This is the comparison, not a recommendation to prepay or not — AI boundaries
-// (CLAUDE.md) say never recommend a specific financial action; showing the real math and letting
-// the user decide is the line this stays on.
+// and 2 real properties (mock-data/real-estate.js), compare each loan's real rate against the Goal
+// plan's own new-money scenario rates. This is the comparison, not a recommendation to prepay or
+// not — AI boundaries (CLAUDE.md) say never recommend a specific financial action; showing the real
+// math and letting the user decide is the line this stays on.
+//
+// Real estate lives in its own mock-data/real-estate.js, deliberately NOT in `positions` — the
+// user asked to keep immovable/illiquid property fully outside the household's tracked investment
+// portfolio and net worth (see GOAL_PLAN and householdTotals.current_total, neither of which
+// include it). This screen is the one place these properties are shown.
 // ============================================================
 function DebtScreen() {
   const totalDebt = liabilities.reduce((s, l) => s + l.principal_outstanding, 0);
   const weightedRate = liabilities.reduce((s, l) => s + l.principal_outstanding * l.rate, 0) / totalDebt;
-  const realEstatePositions = positions.filter(p => p.account_id === 'acc_household_realestate');
-  const realEstateGross = realEstatePositions.reduce((s, p) => s + p.current_value, 0);
+  const realEstateGross = realEstate.reduce((s, p) => s + p.current_value, 0);
   const realEstateNet = realEstateGross - totalDebt;
   const sipRates = GOAL_PLAN.scenarios;
 
@@ -2411,26 +2460,23 @@ function DebtScreen() {
           <div class="insight-section-title"><${Icon} name="chart" size=${13} />The 2 properties</div>
           <${Card}>
             <div class="alloc-list">
-              ${realEstatePositions.map(p => {
-                const inst = instruments[p.instrument_id];
-                return html`
+              ${realEstate.map(p => html`
                   <div class="alloc-row" key=${p.id}>
                     <span class="alloc-swatch" style="background:var(--bronze-500)"></span>
                     <div style="flex:1;">
-                      <div class="alloc-name">${inst.name}</div>
-                      <div class="alloc-note">${p.units.toLocaleString('en-IN')} sqft × ₹${p.nav.toLocaleString('en-IN')}/sqft ${p.id === 'pos_realestate_1' ? '· loan against this one' : '· loan-free'}</div>
+                      <div class="alloc-name">${p.name}</div>
+                      <div class="alloc-note">${p.sqft.toLocaleString('en-IN')} sqft × ₹${p.rate_per_sqft.toLocaleString('en-IN')}/sqft · ${p.loan_free ? 'loan-free' : 'loan against this one'}</div>
                     </div>
                     <div class="alloc-amt">${formatINR(p.current_value)}</div>
                   </div>
-                `;
-              })}
+                `)}
             </div>
           <//>
         </div>
 
         <div class="span-2">
           <div class="gap-note">
-            <b>Gaps, not fabricated:</b> purchase price/date for both properties aren't on file, so no real appreciation/gain figure is computed — only the current user-stated market rate × sqft. Which specific loan (of the 3) funds which purpose isn't specified — carried as 3 real accounts against the same property, not split by purpose. Ownership attribution (whose account these sit under) is unconfirmed; filed under Vinod pending clarification, same convention as the household's FDs. The user-provided sqft rates (₹13,500/sqft for the flat, ₹12,500/sqft for the studio) are stated market estimates, not an independent valuation or a recent comparable sale.
+            <b>Gaps, not fabricated:</b> purchase price/date for both properties aren't on file, so no real appreciation/gain figure is computed — only the current user-stated market rate × sqft. Which specific loan (of the 3) funds which purpose isn't specified — carried as 3 real accounts against the same property, not split by purpose. The user-provided sqft rates (₹13,500/sqft for the flat, ₹12,500/sqft for the studio) are stated market estimates, not an independent valuation or a recent comparable sale. <b>By design, not a gap:</b> these 2 properties and the 3 loans are excluded from the household's overall net worth and from the ₹20 Cr Goal plan — this tab is the one place they're shown. The Goal plan tracks investable/liquid wealth on top of what these properties are worth, not total net worth including them.
           </div>
         </div>
       </div>
@@ -2454,9 +2500,9 @@ function ComingSoonScreen({ name, stage }) {
 const NAV_ITEMS = [
   { id: 'today', label: 'Today', icon: 'home' },
   { id: 'portfolio', label: 'Portfolio', icon: 'chart' },
-  { id: 'insights', label: 'Insights', icon: 'bulb' },
+  { id: 'debt', label: 'Debt & Immovable Assets', icon: 'link' },
   { id: 'budget', label: 'Budget', icon: 'wallet' },
-  { id: 'debt', label: 'Debt', icon: 'link' },
+  { id: 'insights', label: 'Insights', icon: 'bulb' },
   { id: 'goal', label: 'Goal', icon: 'flag' },
 ];
 
