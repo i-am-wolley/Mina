@@ -263,6 +263,7 @@
   .hero-toggle-note { font-size: var(--fs-micro); color: var(--text-tertiary); margin-top: var(--space-2); line-height: 1.5; }
 
   .portfolio-hero-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); margin-bottom: var(--space-8); }
+  .goal-hero-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-6); margin-bottom: var(--space-8); }
   .hero-card-label { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-tertiary); margin-bottom: var(--space-2); }
   .hero-card-value { font-family: var(--font-mono); font-size: 28px; font-weight: var(--fw-bold); letter-spacing: var(--ls-display); line-height: 1.1; }
 
@@ -1897,6 +1898,226 @@ function MoneyScreen() {
 }
 
 // ============================================================
+// 13a  Screen: Goal — a ₹20 Cr, 10-year household growth plan.
+// A forward-looking scenario calculator, not a report of historical actuals —
+// every figure below is computed live from the disclosed constants in
+// GOAL_PLAN, never hardcoded. That's distinct from "never compute a return in
+// the render layer" (which is about not silently deriving real historical
+// XIRR/returns from raw transactions elsewhere in Mina) — a what-if calculator
+// is expected to compute, as long as every assumption stays named and visible.
+// Companion to investment-plan-20cr.html (same numbers, standalone doc + citations).
+// ============================================================
+const GOAL_PLAN = {
+  goal: 200000000,
+  months: 120,
+  fd: 2954000, epfExisting: 5313080, gold: 3236413,
+  fdRate: 0.075, epfRate: 0.0825, goldRate: 0.08,
+  epfMonthlyContrib: 69400, // ₹34,700 employee + ₹34,700 employer, flat — no salary step-up modeled
+  sipStart: 234000, stepup: 0.05,
+  mayLumpsum: 1000000, // every May, invested in the same allocation as the monthly SIP
+  mayMonths: [9, 21, 33, 45, 57, 69, 81, 93, 105, 117], // month index of each May (start = Sep2026 = month 1)
+  scenarios: {
+    optimistic: { existing: 0.17, sip: 0.143, label: 'Optimistic', tone: 'gain' },
+    base: { existing: 0.10, sip: 0.091, label: 'Base case', tone: '' },
+    pessimistic: { existing: 0.02, sip: 0.0335, label: 'Pessimistic', tone: 'critical' },
+  },
+};
+GOAL_PLAN.marketExisting = householdTotals.current_total - GOAL_PLAN.fd - GOAL_PLAN.epfExisting - GOAL_PLAN.gold;
+
+function gpFvLump(pv, rate, months) { return pv * Math.pow(1 + rate / 12, months); }
+function gpFvFlatAnnuity(monthly, rate, months) {
+  const r = rate / 12; let fv = 0;
+  for (let m = 1; m <= months; m++) fv += monthly * Math.pow(1 + r, months - m);
+  return fv;
+}
+function gpFvGrowingSip(start, rate, stepup, months) {
+  const r = rate / 12; let fv = 0, cur = start;
+  for (let m = 1; m <= months; m++) { fv += cur * Math.pow(1 + r, months - m); if (m % 12 === 0) cur *= (1 + stepup); }
+  return fv;
+}
+function gpFvMayLumpsums(rate, months) {
+  const r = rate / 12; let fv = 0, mm = GOAL_PLAN.mayMonths[0];
+  while (mm <= months) { fv += GOAL_PLAN.mayLumpsum * Math.pow(1 + r, months - mm); mm += 12; }
+  return fv;
+}
+function gpTotal(rates, months, sipStart = GOAL_PLAN.sipStart) {
+  const P = GOAL_PLAN;
+  return gpFvLump(P.fd, P.fdRate, months) + gpFvLump(P.epfExisting, P.epfRate, months) + gpFvFlatAnnuity(P.epfMonthlyContrib, P.epfRate, months)
+       + gpFvLump(P.gold, P.goldRate, months) + gpFvLump(P.marketExisting, rates.existing, months)
+       + gpFvGrowingSip(sipStart, rates.sip, P.stepup, months) + gpFvMayLumpsums(rates.sip, months);
+}
+function gpYearSeries(rates) {
+  const P = GOAL_PLAN;
+  const rows = [{ year: 2026, value: householdTotals.current_total }];
+  let sipMonthly = P.sipStart, fd = P.fd, epfE = P.epfExisting, epfC = 0, gold = P.gold, mkt = P.marketExisting, sipCorpus = 0, mayCorpus = 0;
+  const rFD = P.fdRate / 12, rEPF = P.epfRate / 12, rGold = P.goldRate / 12, rEx = rates.existing / 12, rSip = rates.sip / 12;
+  for (let m = 1; m <= P.months; m++) {
+    fd *= (1 + rFD); epfE *= (1 + rEPF); gold *= (1 + rGold); mkt *= (1 + rEx);
+    epfC = epfC * (1 + rEPF) + P.epfMonthlyContrib;
+    sipCorpus = sipCorpus * (1 + rSip) + sipMonthly;
+    mayCorpus = mayCorpus * (1 + rSip) + (P.mayMonths.includes(m) ? P.mayLumpsum : 0);
+    if (m % 12 === 0) { sipMonthly *= (1 + P.stepup); rows.push({ year: 2026 + m / 12, value: fd + epfE + epfC + gold + mkt + sipCorpus + mayCorpus }); }
+  }
+  return rows;
+}
+function gpMonthsToGoal(rates) {
+  let m = 1;
+  while (gpTotal(rates, m) < GOAL_PLAN.goal && m < 40 * 12) m++;
+  return m;
+}
+
+const GOAL_ALLOCATION = [
+  { key: 'India Large/Flexicap', weight: 0.45, color: 'bronze', amt: 105300 },
+  { key: 'India quality Midcap', weight: 0.20, color: 'sage', amt: 46800 },
+  { key: 'Global diversified', weight: 0.20, color: 'teal', amt: 46800 },
+  { key: 'EM ex-India', weight: 0.15, color: 'lilac', amt: 35100 },
+];
+
+const GOAL_RESEARCH = [
+  { icon: 'chart', tag: 'India — Large-cap', title: 'Fairly valued — the best risk-adjusted bet on the table', body: 'Nifty 50 PE ≈20.4 (Aug 2026), below its 10-yr median of 23.4. From this band, historical 5-yr forward returns have median’d ~9.6%. — indexpe.in, trendlyne.com' },
+  { icon: 'chart', tag: 'India — Mid & Smallcap', title: 'Already expensive — and you’re already overweight here', body: 'Midcap 150 near PE 27, Smallcap 250 near PE 38, both well above ~17–20x long-run norms. Fresh money here doubles down on the household’s most stretched valuation. — Finomics Edge, Whalesbook' },
+  { icon: 'trendUp', tag: 'US — S&P 500 / Nasdaq', title: '2nd-highest valuation in 140 years, and a risk you already hold', body: 'Shiller CAPE ≈41.6, behind only Dec-1999. Top-10 S&P names are ~40% of the index — your 13 direct US holdings plus RSU already sit in that concentration. — GuruFocus, The Motley Fool, Forbes' },
+  { icon: 'newspaper', tag: 'Emerging Markets ex-India', title: 'Cheaper, but muted too — a satellite, not a core bet', body: '10-yr forward consensus just 2–4% despite the valuation discount; 2026 EPS growth (~21%) beats the US (~15%). — State Street, J.P. Morgan' },
+  { icon: 'bulb', tag: 'India — Macro tailwind', title: 'The structural case under the large-cap allocation', body: 'Real GDP ~6.8–6.9% (2026–27), nominal ~9–10% — the fundamental tailwind the core allocation is actually betting on. — Goldman Sachs, Trading Economics' },
+  { icon: 'flag', tag: 'Gold', title: 'Real bull run — deliberately excluded from new money', body: 'JPMorgan targets $6,000/oz by end-2026. The existing HDFC Gold ETF keeps compounding at its ~8% trend; no new SIP money goes here, per the no-safety-bucket instruction. — J.P. Morgan, GoldRepublic' },
+];
+
+const GOAL_FRAMEWORK = [
+  { title: 'Re-run this model with real numbers', body: 'Swap in the actual portfolio value and current index PE/CAPE every 6 months — this is a snapshot of Sep 2026 valuations, not a permanent forecast.' },
+  { title: 'Nifty 50 PE below ~17–18 → tilt more into India large-cap', body: 'A genuine cheapening of the core holding is the signal to add, not a fixed calendar date.' },
+  { title: 'Nifty 50 PE above ~25 → redirect fresh large-cap money to global/EM', body: 'Don’t keep buying the same slice at a richer price just because it’s the “core” holding.' },
+  { title: 'US CAPE meaningfully mean-reverts (toward 25–30) → add global exposure then', body: 'At today’s CAPE of 41.6, staying underweight AI-concentrated exposure is deliberate, not permanent.' },
+  { title: '12–18 months in, check which scenario you’re tracking', body: 'If actual returns run closer to pessimistic, decide then — raise the SIP, extend the horizon, or accept a lower number — rather than discovering it in year 9.' },
+  { title: 'Trim the RSU concentration over time', body: 'AB InBev RSU is a single-stock position outside this whole model. Periodic sell-and-reinvest reduces a real, uncompensated risk.' },
+  { title: 'Don’t add a third overlapping fund', body: 'Keerthana’s two Parag Parikh Flexi Cap folios already share one ISIN. Consolidate existing overlap before adding anything new in the same category.' },
+];
+
+function GoalPlanScreen() {
+  const model = useMemo(() => {
+    const finals = {}, monthsTo = {}, series = {};
+    for (const [name, rates] of Object.entries(GOAL_PLAN.scenarios)) {
+      const ys = gpYearSeries(rates);
+      series[name] = ys;
+      finals[name] = ys[ys.length - 1].value;
+      monthsTo[name] = gpMonthsToGoal(rates);
+    }
+    let lo = 0, hi = 10000000;
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (gpTotal(GOAL_PLAN.scenarios.base, GOAL_PLAN.months, mid) < GOAL_PLAN.goal) lo = mid; else hi = mid; }
+    return { finals, monthsTo, series, requiredSip: (lo + hi) / 2 };
+  }, []);
+
+  const seriesColor = { optimistic: 'var(--sage-500)', base: 'var(--accent)', pessimistic: 'var(--danger-500)' };
+  const seriesList = Object.keys(GOAL_PLAN.scenarios).map(name => ({ key: name, color: seriesColor[name], points: model.series[name], width: name === 'base' ? 3 : 2.2 }));
+
+  return html`
+    <div>
+      <div class="goal-hero-row">
+        <${Card}>
+          <div class="hero-card-label">Goal</div>
+          <div class="hero-card-value tabular">${formatINR(GOAL_PLAN.goal)}</div>
+          <div class="hero-toggle-note">By Sep 2036 — 10 years out</div>
+        <//>
+        <${Card}>
+          <div class="hero-card-label">Household today</div>
+          <div class="hero-card-value tabular">${formatINR(householdTotals.current_total)}</div>
+          <div class="hero-toggle-note">Existing holdings untouched by this plan</div>
+        <//>
+        <${Card}>
+          <div class="hero-card-label">New monthly SIP</div>
+          <div class="hero-card-value tabular">${formatINR(GOAL_PLAN.sipStart)}<span style="font-size:13px;color:var(--text-tertiary);font-weight:600;"> +5%/yr</span></div>
+          <div class="hero-toggle-note">Plus ₹${(GOAL_PLAN.epfMonthlyContrib / 1000).toFixed(1)}K/mo EPF · ₹10L every May</div>
+        <//>
+        <${Card}>
+          <div class="hero-card-label">Base case — 10yr</div>
+          <div class="hero-card-value tabular">${formatINR(model.finals.base)}</div>
+          <div class="hero-toggle-note">${((model.finals.base / GOAL_PLAN.goal) * 100).toFixed(0)}% of goal · full goal ~year ${(model.monthsTo.base / 12).toFixed(1)}</div>
+        <//>
+      </div>
+
+      <div class="insights-col">
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />10-year scenario projection</div>
+          <${Card}>
+            <${YearChart} seriesList=${seriesList} height=${220} />
+            <div class="trend-legend">
+              ${Object.entries(GOAL_PLAN.scenarios).map(([name, rates]) => html`
+                <span class="trend-legend-item" key=${name}><span class="trend-legend-swatch" style="background:${seriesColor[name]}"></span>${rates.label} (existing ${(rates.existing * 100).toFixed(0)}% · SIP ${(rates.sip * 100).toFixed(1)}%)</span>
+              `)}
+            </div>
+            <div class="trend-stats-row" style="margin-top:var(--space-5);">
+              ${Object.entries(GOAL_PLAN.scenarios).map(([name, rates]) => html`
+                <div key=${name}>
+                  <div class="trend-stat-value tabular ${rates.tone === 'gain' ? 'up' : rates.tone === 'critical' ? 'down' : ''}">${formatINR(model.finals[name])}</div>
+                  <div class="trend-stat-label">${rates.label} · goal ~year ${(model.monthsTo[name] / 12).toFixed(1)}</div>
+                </div>
+              `)}
+            </div>
+            <div class="trend-note">FD, the existing EPF balance, and Gold compound at their own real rates in every scenario (7.5% / 8.25% / 8% resp.) — only the market-linked existing corpus and new money (SIP + May lumpsum) flex with the scenario. Full assumptions below.</div>
+          <//>
+        </div>
+
+        <div>
+          <div class="insight-section-title"><${Icon} name="chart" size=${13} />Next 6 months — ₹2.34L/mo split</div>
+          <${Card}>
+            <div class="mini-alloc" style="cursor:default">
+              <${Donut} groups=${GOAL_ALLOCATION} size=${120} strokeW=${20} />
+              <div class="mini-alloc-legend">
+                ${GOAL_ALLOCATION.map(g => html`<div class="mini-alloc-item" key=${g.key}><span class="mini-alloc-dot" style=${{ background: `var(--${g.color}-500)` }} /><span class="mini-alloc-name">${g.key}</span><span class="mini-alloc-pct tabular">${(g.weight * 100).toFixed(0)}%</span></div>`)}
+              </div>
+            </div>
+            <div class="trend-note">The ₹10L May lumpsum invests in this same split — not a separate bucket.</div>
+          <//>
+        </div>
+
+        <div>
+          <div class="insight-section-title"><${Icon} name="wallet" size=${13} />What actually moves the outcome</div>
+          <${Card}>
+            <div class="insight-body">Under base-case returns, hitting ₹20 Cr in exactly 10 years needs a starting SIP of <b>${formatINR(model.requiredSip)}</b>/month — a modest step up from ₹2.34L, because the EPF contributions and May lumpsum are already doing real work toward the goal.</div>
+          <//>
+        </div>
+
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="bulb" size=${13} />Market research behind the assumptions</div>
+          <div class="insight-section-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-5);">
+            ${GOAL_RESEARCH.map((r, i) => html`
+              <div class="insight-card" key=${i}>
+                <span class="insight-icon"><${Icon} name=${r.icon} size=${16} /></span>
+                <div class="card-body">
+                  <div class="insight-tag">${r.tag}</div>
+                  <div class="insight-title">${r.title}</div>
+                  <div class="insight-body">${r.body}</div>
+                </div>
+              </div>
+            `)}
+          </div>
+        </div>
+
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="flag" size=${13} />After 6 months — a decision framework, not a new allocation</div>
+          <div class="insight-section-body">
+            ${GOAL_FRAMEWORK.map((f, i) => html`
+              <div class="insight-card" key=${i}>
+                <span class="insight-icon"><${Icon} name="flag" size=${16} /></span>
+                <div class="card-body">
+                  <div class="insight-title">${f.title}</div>
+                  <div class="insight-body">${f.body}</div>
+                </div>
+              </div>
+            `)}
+          </div>
+        </div>
+
+        <div class="span-2">
+          <div class="gap-note">
+            <b>Assumptions:</b> FD 7.5% (value-weighted, contracted) · EPF balance 8.25% (statutory) · EPF new contributions ₹69.4K/mo (₹34.7K employee + ₹34.7K employer, flat, no salary step-up modeled) · Gold 8% (long-run trend, not 2026's bull spike) · existing market-linked corpus optimistic 17% / base 10% / pessimistic 2% (wide spread — reflects real AI/semis + smallcap concentration) · new SIP + May lumpsum optimistic 14.3% / base 9.1% / pessimistic 3.35% (bottom-up blend of the allocation above). Not licensed financial advice — a modeling exercise from your real portfolio and public research, same numbers as the standalone companion sheet with full citations.
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
 // 14–15  Screens: Add / Settings — not built yet.
 // ============================================================
 function ComingSoonScreen({ name, stage }) {
@@ -1911,6 +2132,7 @@ const NAV_ITEMS = [
   { id: 'portfolio', label: 'Portfolio', icon: 'chart' },
   { id: 'insights', label: 'Insights', icon: 'bulb' },
   { id: 'money', label: 'Money', icon: 'wallet' },
+  { id: 'goal', label: 'Goal', icon: 'flag' },
 ];
 
 function TopNav({ tab, onNavigate, memberNames }) {
@@ -1947,7 +2169,8 @@ function AppShell() {
         ${tab === 'portfolio' && html`<${PortfolioScreen} onNavigate=${setTab} />`}
         ${tab === 'insights' && html`<${InsightsScreen} />`}
         ${tab === 'money' && html`<${MoneyScreen} />`}
-        ${tab !== 'today' && tab !== 'portfolio' && tab !== 'insights' && tab !== 'money' && html`<${ComingSoonScreen} name=${current.label} stage=${current.stage} />`}
+        ${tab === 'goal' && html`<${GoalPlanScreen} />`}
+        ${tab !== 'today' && tab !== 'portfolio' && tab !== 'insights' && tab !== 'money' && tab !== 'goal' && html`<${ComingSoonScreen} name=${current.label} stage=${current.stage} />`}
       </div>
     </div>
   `;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>The ₹25 Cr Plan</title>
+<title>The ₹20 Cr Plan</title>
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap");
 
@@ -229,11 +229,11 @@
   <header class="masthead">
     <div>
       <div class="kicker">Household growth plan</div>
-      <h1>The ₹25 Cr Plan</h1>
-      <p class="lede">A 10-year roadmap for Vinod &amp; Keerthana's household portfolio — modeled against your own real holdings and researched against current India/global market valuations, with optimistic, base, and pessimistic scenarios worked through explicitly.</p>
+      <h1>The ₹20 Cr Plan</h1>
+      <p class="lede">A 10-year roadmap for Vinod &amp; Keerthana's household portfolio — modeled against your own real holdings, EPF contributions and annual lumpsum, and researched against current India/global market valuations, with optimistic, base, and pessimistic scenarios worked through explicitly.</p>
     </div>
     <div class="masthead-meta">
-      <div>Built 2 Sep 2026</div>
+      <div>Built 2 Sep 2026 · revised for a ₹20 Cr goal</div>
       <div>Horizon: Sep 2026 → Sep 2036</div>
       <div>Companion to the Mina household ledger</div>
     </div>
@@ -244,7 +244,7 @@
     <div class="hero-stats">
       <div>
         <div class="hero-stat-label">Goal</div>
-        <div class="hero-stat-value">₹25.00 Cr</div>
+        <div class="hero-stat-value">₹20.00 Cr</div>
       </div>
       <div>
         <div class="hero-stat-label">Current net worth</div>
@@ -255,8 +255,8 @@
         <div class="hero-stat-value">₹2.34 L <span style="font-size:13px;color:var(--text-tertiary);font-weight:600;">+5%/yr</span></div>
       </div>
       <div>
-        <div class="hero-stat-label">Required blended CAGR</div>
-        <div class="hero-stat-value">15.5%</div>
+        <div class="hero-stat-label">Plus EPF + annual lumpsum</div>
+        <div class="hero-stat-value">₹69.4 K/mo <span style="font-size:13px;color:var(--text-tertiary);font-weight:600;">+ ₹10L every May</span></div>
       </div>
     </div>
   </div>
@@ -266,7 +266,7 @@
     <div class="section-head">
       <div class="kicker">01 — Starting point</div>
       <h2>What you're actually starting with</h2>
-      <p>Real household data as of 2 Aug 2026 (AMFI NAVs + Yahoo Finance quotes) — not a placeholder. This plan doesn't touch these existing holdings; it only decides where the new ₹2.34L/month goes.</p>
+      <p>Real household data as of 2 Aug 2026 (AMFI NAVs + Yahoo Finance quotes) — not a placeholder. This plan doesn't touch these existing holdings; it decides where the new ₹2.34L/month goes, and folds in your EPF contributions and the annual May lumpsum as real, separate cash flows.</p>
     </div>
     <div class="card-grid grid-4">
       <div class="stat-card">
@@ -275,9 +275,9 @@
         <div class="stat-sub">72% of net worth — already heavy in India small/midcap and US AI/semis, see Research below</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">EPF</div>
-        <div class="stat-value">₹53.1 L</div>
-        <div class="stat-sub">Statutory ~8.25%, held out of the market scenarios</div>
+        <div class="stat-label">EPF — balance + new contributions</div>
+        <div class="stat-value">₹53.1 L <span style="font-size:14px;">+ ₹69.4K/mo</span></div>
+        <div class="stat-sub">Balance grows at the statutory ~8.25%; ₹34.7K employee + ₹34.7K employer added monthly, same rate, flat (no salary step-up modeled)</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Gold ETF</div>
@@ -289,6 +289,10 @@
         <div class="stat-value">₹29.5 L</div>
         <div class="stat-sub">Contracted ~7.5% avg, matures 2028–2033</div>
       </div>
+    </div>
+    <div class="card" style="margin-top:var(--space-5);">
+      <div class="kicker-sm" style="margin-bottom:6px;">Annual lumpsum</div>
+      <p style="margin:0;font-size:var(--fs-sm);"><strong class="num">₹10,00,000</strong> every May, for all 10 years — invested in the same diversified allocation as the monthly SIP (section 05), not treated as a separate bucket. First one modeled for May 2027.</p>
     </div>
   </section>
 
@@ -384,15 +388,15 @@
     <div class="card">
       <div class="chart-wrap"><svg id="leversChart" width="1000" height="340" viewBox="0 0 1000 340" role="img" aria-label="Ten year outcome under different SIP amounts and stepup rates, base case returns"></svg></div>
     </div>
-    <p style="margin-top:var(--space-5);font-size:var(--fs-sm);">To hit exactly ₹25 Cr in 10 years under base-case returns, the required starting SIP is <strong class="num" id="requiredSipInline">—</strong>/month — about 2.6× the current plan. That's the honest price of the goal if markets only deliver the base case.</p>
+    <p style="margin-top:var(--space-5);font-size:var(--fs-sm);">To hit exactly ₹20 Cr in 10 years under base-case returns, the required starting SIP is <strong class="num" id="requiredSipInline">—</strong>/month — only a modest step up from the current ₹2.34L, because the EPF contributions and the annual May lumpsum are already doing real work toward the goal. That's the honest price of the last mile if markets only deliver the base case.</p>
   </section>
 
   <!-- ============ ALLOCATION ============ -->
   <section class="section">
     <div class="section-head">
       <div class="kicker">05 — Next 6 months</div>
-      <h2>Where the ₹2,34,000/month actually goes</h2>
-      <p>Deliberately underweights what's already concentrated (US AI/semis via 13 direct holdings + RSU, India smallcap via 2 existing active funds) and overweights the one area with the best valuation-to-growth combination.</p>
+      <h2>Where the ₹2,34,000/month — and the May lumpsum — actually goes</h2>
+      <p>Deliberately underweights what's already concentrated (US AI/semis via 13 direct holdings + RSU, India smallcap via 2 existing active funds) and overweights the one area with the best valuation-to-growth combination. The ₹10L May lumpsum is invested in this same split, not treated separately.</p>
     </div>
     <div class="card-grid grid-2">
       <div class="card">
@@ -434,16 +438,18 @@
         <dd>All figures use monthly compounding (annual rate ÷ 12) for consistency between the lump-sum buckets and the growing SIP annuity — not mixed annual/monthly conventions.</dd>
         <dt>FD — 7.5%/yr</dt>
         <dd>Value-weighted average of the three real, named FDs on file (Shriram Finance 7.6%, HDFC Bank 7.75% and 7.25%) — contracted rates, held constant regardless of scenario.</dd>
-        <dt>EPF — 8.25%/yr</dt>
-        <dd>Current EPFO statutory declared rate. No new monthly EPF contributions are modeled (data gap — salary-linked EPF inflow isn't in the household ledger yet), so this understates the real EPF trajectory somewhat.</dd>
+        <dt>EPF — existing balance ₹53.1L @ 8.25%/yr</dt>
+        <dd>Current EPFO statutory declared rate, applied to the balance already on file.</dd>
+        <dt>EPF — new contributions ₹69,400/month @ 8.25%/yr</dt>
+        <dd>₹34,700 employee + ₹34,700 employer, modeled as a flat monthly contribution (no growth) compounding at the same statutory rate. In reality this rises with salary increments, so this is a conservative floor, not an overstatement.</dd>
+        <dt>Annual lumpsum — ₹10,00,000 every May</dt>
+        <dd>Modeled as a single lumpsum injection each May (first: May 2027), invested in the same allocation as the monthly SIP and compounding at the same scenario rate — flat ₹10L/year, no step-up assumed.</dd>
         <dt>Gold — 8%/yr</dt>
         <dd>Long-run historical trend rate, not the much higher 2026 spot forecasts (JPMorgan's $6,000/oz end-2026 target implies a much faster near-term move) — a 10-year CAGR assumption shouldn't extrapolate one bull year.</dd>
         <dt>Existing market-linked corpus (₹2.92 Cr: MF, direct stocks, US stocks, RSU)</dt>
         <dd>Optimistic 17% / Base 10% / Pessimistic 2% — a wider spread than a diversified portfolio would get, reflecting the real concentration in AI/semiconductor stocks and expensive India small/midcap funds documented in the Research section.</dd>
-        <dt>New SIP (₹2.34L/month, +5% step-up)</dt>
-        <dd>Optimistic 14.3% / Base 9.1% / Pessimistic 3.35% — bottom-up blend of the section-05 allocation: India large-cap (10/15/5%), India quality midcap (10/16/3%), global diversified ex-concentrated-AI (7/12/1%), EM ex-India (8/13/2%), weighted 45/20/20/15.</dd>
-        <dt>Required blended CAGR — 15.5%</dt>
-        <dd>The single uniform rate that would need to apply to <em>everything</em> — including the FD and EPF buckets — to hit ₹25 Cr in exactly 10 years. Shown for reference only; it's not realistic since FD/EPF won't compound at equity-like rates, which is exactly why the bucketed scenario model above tells the truer story.</dd>
+        <dt>New SIP + annual lumpsum (₹2.34L/month +5% step-up, ₹10L every May)</dt>
+        <dd>Optimistic 14.3% / Base 9.1% / Pessimistic 3.35% — bottom-up blend of the section-05 allocation: India large-cap (10/15/5%), India quality midcap (10/16/3%), global diversified ex-concentrated-AI (7/12/1%), EM ex-India (8/13/2%), weighted 45/20/20/15. Both the monthly SIP and the May lumpsum use this same blended rate since both flow into the same allocation.</dd>
       </dl>
     </div>
     <div class="disclaimer">
@@ -452,19 +458,22 @@
   </section>
 
   <footer>
-    <div>The ₹25 Cr Plan — built 2 Sep 2026</div>
+    <div>The ₹20 Cr Plan — built 2 Sep 2026, revised same day for the ₹20 Cr goal + EPF + May lumpsum</div>
     <div>Figures computed live in this page from the constants in §07 — view source to check the math</div>
   </footer>
 </div>
 
 <script>
 (function() {
-  const GOAL = 250000000;
+  const GOAL = 200000000;
   const YEARS = 10, MONTHS = 120;
-  const FD = 2954000, EPF = 5313080, GOLD = 3236413;
-  const MARKET_EXISTING = 40701024 - FD - EPF - GOLD;
+  const FD = 2954000, EPF_EXISTING = 5313080, GOLD = 3236413;
+  const MARKET_EXISTING = 40701024 - FD - EPF_EXISTING - GOLD;
   const FD_RATE = 0.075, EPF_RATE = 0.0825, GOLD_RATE = 0.08;
+  const EPF_MONTHLY_CONTRIB = 34700 + 34700; // employee + employer, flat — no salary-linked stepup modeled
   const SIP_START = 234000, STEPUP = 0.05;
+  const MAY_LUMPSUM = 1000000; // every May, invested in the same allocation as the monthly SIP
+  const MAY_MONTHS = [9, 21, 33, 45, 57, 69, 81, 93, 105, 117]; // month index of each May (start=Sep2026=month 1)
   const SCEN = {
     optimistic: { existing: 0.17, sip: 0.143, color: 'var(--scen-optimistic)' },
     base:       { existing: 0.10, sip: 0.091, color: 'var(--scen-base)' },
@@ -472,28 +481,41 @@
   };
 
   function fvLump(pv, rate, months) { return pv * Math.pow(1 + rate/12, months); }
+  function fvFlatAnnuity(monthly, rate, months) {
+    const r = rate/12; let fv = 0;
+    for (let m=1; m<=months; m++) fv += monthly * Math.pow(1+r, months-m);
+    return fv;
+  }
   function fvSip(start, rate, stepup, months) {
     const r = rate/12; let fv = 0, cur = start;
     for (let m=1; m<=months; m++) { fv += cur * Math.pow(1+r, months-m); if (m%12===0) cur *= (1+stepup); }
     return fv;
   }
+  function fvMayLumpsums(rate, months) {
+    const r = rate/12; let fv = 0, mm = 9;
+    while (mm <= months) { fv += MAY_LUMPSUM * Math.pow(1+r, months-mm); mm += 12; }
+    return fv;
+  }
   function totalForScenario(rates, months) {
-    return fvLump(FD, FD_RATE, months) + fvLump(EPF, EPF_RATE, months) + fvLump(GOLD, GOLD_RATE, months)
-         + fvLump(MARKET_EXISTING, rates.existing, months) + fvSip(SIP_START, rates.sip, STEPUP, months);
+    return fvLump(FD, FD_RATE, months) + fvLump(EPF_EXISTING, EPF_RATE, months) + fvFlatAnnuity(EPF_MONTHLY_CONTRIB, EPF_RATE, months)
+         + fvLump(GOLD, GOLD_RATE, months) + fvLump(MARKET_EXISTING, rates.existing, months)
+         + fvSip(SIP_START, rates.sip, STEPUP, months) + fvMayLumpsums(rates.sip, months);
   }
   function yearSeries(rates) {
     const rows = [];
-    let sipMonthly = SIP_START, fd=FD, epf=EPF, gold=GOLD, mkt=MARKET_EXISTING, sipCorpus=0;
+    let sipMonthly = SIP_START, fd=FD, epfE=EPF_EXISTING, epfC=0, gold=GOLD, mkt=MARKET_EXISTING, sipCorpus=0, mayCorpus=0;
     const rFD=FD_RATE/12, rEPF=EPF_RATE/12, rGold=GOLD_RATE/12, rEx=rates.existing/12, rSip=rates.sip/12;
     for (let m=1; m<=MONTHS; m++) {
-      fd*=(1+rFD); epf*=(1+rEPF); gold*=(1+rGold); mkt*=(1+rEx);
+      fd*=(1+rFD); epfE*=(1+rEPF); gold*=(1+rGold); mkt*=(1+rEx);
+      epfC = epfC*(1+rEPF) + EPF_MONTHLY_CONTRIB;
       sipCorpus = sipCorpus*(1+rSip) + sipMonthly;
-      if (m%12===0) { sipMonthly *= (1+STEPUP); rows.push(fd+epf+gold+mkt+sipCorpus); }
+      mayCorpus = mayCorpus*(1+rSip) + (MAY_MONTHS.includes(m) ? MAY_LUMPSUM : 0);
+      if (m%12===0) { sipMonthly *= (1+STEPUP); rows.push(fd+epfE+epfC+gold+mkt+sipCorpus+mayCorpus); }
     }
     return rows; // 10 values, year 1..10
   }
   function monthsToGoal(rates) {
-    let m = MONTHS;
+    let m = 1;
     while (totalForScenario(rates, m) < GOAL && m < 40*12) m++;
     return m;
   }
@@ -512,7 +534,7 @@
 
   // ---- verdict line ----
   document.getElementById('verdictLine').innerHTML =
-    `Under <strong>optimistic</strong> market conditions this plan just about reaches the goal — <strong>${fmtCr(finals.optimistic)}</strong> in 10 years, and ₹25 Cr arrives around year ${(monthsTo.optimistic/12).toFixed(1)}. Under the <strong>realistic base case</strong>, expect <strong>${fmtCr(finals.base)}</strong> by year 10 — the full goal takes closer to <strong>${(monthsTo.base/12).toFixed(1)} years</strong> at this contribution rate. The pessimistic path stretches that to <strong>~${(monthsTo.pessimistic/12).toFixed(0)} years</strong>.`;
+    `The EPF contributions and the annual May lumpsum do real work here. Under the <strong>realistic base case</strong>, this plan reaches <strong>${fmtCr(finals.base)}</strong> by year 10 — ${((finals.base/GOAL)*100).toFixed(0)}% of the goal — and crosses the full ₹20 Cr around year <strong>${(monthsTo.base/12).toFixed(1)}</strong>, just past the 10-year mark. Under <strong>optimistic</strong> conditions the goal arrives much earlier, around year <strong>${(monthsTo.optimistic/12).toFixed(1)}</strong>, and the plan ends up at <strong>${fmtCr(finals.optimistic)}</strong> — well past ₹20 Cr — by year 10. The <strong>pessimistic</strong> path still gets there, just later — around year ${(monthsTo.pessimistic/12).toFixed(1)}.`;
 
   // ---- scenario stat cards ----
   document.getElementById('statOptTotal').textContent = fmtCr(finals.optimistic);
@@ -553,7 +575,7 @@
     }
     // goal line
     svgContent += `<line x1="${PL}" y1="${y(GOAL)}" x2="${W-PR}" y2="${y(GOAL)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6,5" />`;
-    svgContent += `<text x="${W-PR}" y="${y(GOAL)-8}" text-anchor="end" class="chart-value-label" fill="var(--accent)">Goal — ₹25 Cr</text>`;
+    svgContent += `<text x="${W-PR}" y="${y(GOAL)-8}" text-anchor="end" class="chart-value-label" fill="var(--accent)">Goal — ₹20 Cr</text>`;
 
     for (const [name, rates] of Object.entries(SCEN)) {
       const pts = [[0, crore(40701024)*10000000]].concat(series[name].map((v,i)=>[i+1, v]));
@@ -569,7 +591,7 @@
     const labels = { optimistic: 'Optimistic', base: 'Base case', pessimistic: 'Pessimistic' };
     legend.innerHTML = Object.entries(SCEN).map(([name, rates]) =>
       `<div class="legend-item"><span class="legend-swatch line" style="background:${rates.color}"></span>${labels[name]} (existing ${(rates.existing*100).toFixed(0)}% · new SIP ${(rates.sip*100).toFixed(1)}%)</div>`
-    ).join('') + `<div class="legend-item"><span class="legend-swatch line" style="background:var(--accent);opacity:0.7"></span>Goal (₹25 Cr)</div>`;
+    ).join('') + `<div class="legend-item"><span class="legend-swatch line" style="background:var(--accent);opacity:0.7"></span>Goal (₹20 Cr)</div>`;
   })();
 
   // ---- levers chart ----
@@ -580,8 +602,9 @@
 
     function fvLever(sip, stepup) {
       const rates = SCEN.base;
-      return fvLump(FD, FD_RATE, MONTHS) + fvLump(EPF, EPF_RATE, MONTHS) + fvLump(GOLD, GOLD_RATE, MONTHS)
-           + fvLump(MARKET_EXISTING, rates.existing, MONTHS) + fvSip(sip, rates.sip, stepup, MONTHS);
+      return fvLump(FD, FD_RATE, MONTHS) + fvLump(EPF_EXISTING, EPF_RATE, MONTHS) + fvFlatAnnuity(EPF_MONTHLY_CONTRIB, EPF_RATE, MONTHS)
+           + fvLump(GOLD, GOLD_RATE, MONTHS) + fvLump(MARKET_EXISTING, rates.existing, MONTHS)
+           + fvSip(sip, rates.sip, stepup, MONTHS) + fvMayLumpsums(rates.sip, MONTHS);
     }
     // required SIP for exact goal at base case
     let lo=0, hi=10000000;
@@ -591,21 +614,20 @@
 
     const bars = [
       { label: 'Current plan\n₹2.34L @5%', value: fvLever(234000, 0.05), current: true },
+      { label: `Required\n${fmtL(requiredSip)} @5%`, value: fvLever(requiredSip, 0.05), required: true },
       { label: '₹3.0L @5%', value: fvLever(300000, 0.05) },
       { label: '₹3.5L @5%', value: fvLever(350000, 0.05) },
-      { label: '₹4.0L @5%', value: fvLever(400000, 0.05) },
       { label: '₹2.34L @10%\nstep-up', value: fvLever(234000, 0.10) },
       { label: '₹2.34L @15%\nstep-up', value: fvLever(234000, 0.15) },
-      { label: 'Required\n₹6.2L @5%', value: fvLever(requiredSip, 0.05), required: true },
     ];
-    const maxVal = GOAL * 1.08;
+    const maxVal = Math.max(...bars.map(b=>b.value), GOAL) * 1.08;
     const y = (v) => PT + plotH - (v/maxVal)*plotH;
     const bw = plotW / bars.length * 0.6;
     const gap = plotW / bars.length;
 
     let content = '';
     content += `<line x1="${PL}" y1="${y(GOAL)}" x2="${W-PR}" y2="${y(GOAL)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6,5" />`;
-    content += `<text x="${W-PR}" y="${y(GOAL)-8}" text-anchor="end" class="chart-value-label" fill="var(--accent)">Goal — ₹25 Cr</text>`;
+    content += `<text x="${W-PR}" y="${y(GOAL)-8}" text-anchor="end" class="chart-value-label" fill="var(--accent)">Goal — ₹20 Cr</text>`;
     bars.forEach((b, i) => {
       const cx = PL + gap*i + gap/2;
       const barX = cx - bw/2;
