@@ -2027,6 +2027,34 @@ const GOAL_FRAMEWORK = [
   { title: 'Once the systematic base is established, consider a small direct-stock satellite', body: 'Optional — a handful of quality India large-caps in sectors the household doesn’t already own heavily (financials, consumer, healthcare — not more semis/tech) can sit alongside the fund-based core. Keep it single-digit % of new money, not a replacement for the allocation above.' },
 ];
 
+// Purchasing-power reality check: what the ₹20 Cr nominal goal is actually worth in today's money,
+// 10 years out. India's CPI is currently running ~4–4.5% (2026), with a 5.6% average over the prior
+// decade — base case here uses 5% as the midpoint, optimistic/pessimistic bracket it. This is a
+// separate axis from the return-scenario optimistic/base/pessimistic above (that's investment-return
+// uncertainty; this is purchasing-power uncertainty) — deliberately not cross-multiplied into 9
+// combinations, just applied to the fixed ₹20 Cr goal itself.
+const INFLATION_SCENARIOS = {
+  optimistic: { rate: 0.04, label: 'Optimistic (4%)' },
+  base: { rate: 0.05, label: 'Base (5%)' },
+  pessimistic: { rate: 0.06, label: 'Pessimistic (6%)' },
+};
+
+// FD alternative: what ₹20 Cr parked in a plain 5% FD (monthly, simple-interest payout, not
+// compounded — matches how a payout FD actually works) would hand over each month, after tax.
+// Tax assumption, disclosed: FD interest is "income from other sources," taxed at slab rate, not
+// the equity LTCG/STCG rates used elsewhere in this app. Already well past the ₹24L 30%-slab
+// threshold on existing income alone; the household's stated ₹5.06L/month income (₹60.72L/yr) plus
+// this FD's ₹1 Cr/yr interest totals ~₹1.61 Cr/yr — squarely in the 1Cr–2Cr surcharge band (15%),
+// not the >2Cr band (25%). New tax regime, FY2026-27: 30% slab × 1.15 surcharge × 1.04 cess ≈ 35.88%
+// effective. This is illustrative, not a tax return — actual liability depends on whose name the
+// corpus sits in and what else that person earns that year.
+const FD_ALTERNATIVE = {
+  rate: 0.05,
+  slabRate: 0.30,
+  surchargeRate: 0.15,
+  cessRate: 0.04,
+};
+
 function GoalPlanScreen() {
   const model = useMemo(() => {
     const finals = {}, monthsTo = {}, series = {};
@@ -2129,6 +2157,43 @@ function GoalPlanScreen() {
         </div>
 
         <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="newspaper" size=${13} />The purchasing-power reality check</div>
+          <${Card}>
+            <div class="insight-body" style="margin-bottom:var(--space-5);">₹20 Cr in 2036 won't buy what ₹20 Cr buys today. Same goal, deflated by inflation — not a different number, just an honest read of the same one.</div>
+            <div class="trend-stats-row">
+              ${Object.entries(INFLATION_SCENARIOS).map(([name, s]) => html`
+                <div key=${name}>
+                  <div class="trend-stat-value tabular">${formatINR(GOAL_PLAN.goal / Math.pow(1 + s.rate, 10))}</div>
+                  <div class="trend-stat-label">${s.label} inflation — today's-money value</div>
+                </div>
+              `)}
+            </div>
+            <div class="trend-note">To have ₹20 Cr of <em>today's</em> purchasing power in 2036, the nominal target would need to be closer to <b>${formatINR(GOAL_PLAN.goal * Math.pow(1 + INFLATION_SCENARIOS.base.rate, 10))}</b> at base-case (5%) inflation. Doesn't mean the goal is wrong — just what "₹20 Cr" actually means 10 years out. India CPI is running ~4–4.5% currently, averaged 5.6% over the prior decade.</div>
+          <//>
+        </div>
+
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="wallet" size=${13} />If it all sat in a 5% FD instead</div>
+          <${Card}>
+            ${(() => {
+              const annualInterest = GOAL_PLAN.goal * FD_ALTERNATIVE.rate;
+              const monthlyPreTax = annualInterest / 12;
+              const effRate = FD_ALTERNATIVE.slabRate * (1 + FD_ALTERNATIVE.surchargeRate) * (1 + FD_ALTERNATIVE.cessRate);
+              const monthlyPostTax = monthlyPreTax * (1 - effRate);
+              return html`
+                <div class="insight-body" style="margin-bottom:var(--space-5);">The safest possible use of a ₹20 Cr corpus — a plain FD, no market risk — still has to clear two hurdles: tax, then inflation.</div>
+                <div class="trend-stats-row">
+                  <div><div class="trend-stat-value tabular">${formatINR(monthlyPreTax)}</div><div class="trend-stat-label">Monthly interest, pre-tax</div></div>
+                  <div><div class="trend-stat-value tabular down">${formatINR(monthlyPostTax)}</div><div class="trend-stat-label">Monthly, after tax (~${(effRate * 100).toFixed(1)}% effective)</div></div>
+                  <div><div class="trend-stat-value tabular down">${formatINR(monthlyPostTax / Math.pow(1 + INFLATION_SCENARIOS.base.rate, 10))}</div><div class="trend-stat-label">Same monthly amount, today's purchasing power</div></div>
+                </div>
+                <div class="trend-note">Tax assumption: FD interest is "income from other sources," taxed at slab rate (not the equity LTCG/STCG rates used elsewhere here). At 30% slab (already well past the ₹24L threshold on existing income alone) + 15% surcharge (existing ₹60.72L/yr income + this FD's ₹1 Cr/yr interest ≈ ₹1.61 Cr/yr total, in the ₹1–2 Cr surcharge band) + 4% cess ≈ 35.88% effective — new tax regime, FY2026-27. Illustrative, not a tax return: actual liability depends on whose name the corpus sits in and what else that person earns that year. The point isn't "don't use an FD" — it's that even the risk-free option needs the same tax-and-inflation lens as the investment plan above, not a free pass because it's "safe."</div>
+              `;
+            })()}
+          <//>
+        </div>
+
+        <div class="span-2">
           <div class="insight-section-title"><${Icon} name="bulb" size=${13} />Market research behind the assumptions</div>
           <div class="insight-section-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-5);">
             ${GOAL_RESEARCH.map((r, i) => html`
@@ -2161,7 +2226,7 @@ function GoalPlanScreen() {
 
         <div class="span-2">
           <div class="gap-note">
-            <b>Assumptions:</b> FD 7.5% (value-weighted, contracted) · EPF balance 8.25% (statutory) · EPF new contributions ₹69.4K/mo (₹34.7K employee + ₹34.7K employer, flat, no salary step-up modeled) · Gold 8% (long-run trend, not 2026's bull spike) · existing market-linked corpus optimistic 17% / base 10% / pessimistic 2% (wide spread — reflects real AI/semis + smallcap concentration) · new SIP + May lumpsum optimistic 14.3% / base 9.1% / pessimistic 3.35% (bottom-up blend of the allocation above). Immovable property (2 real properties, ~₹3.42 Cr, see Debt & Immovable Assets) is deliberately excluded from this goal entirely, by request — it isn't a bucket in this model at all. Not licensed financial advice — a modeling exercise from your real portfolio and public research, same numbers as the standalone companion sheet with full citations.
+            <b>Assumptions:</b> FD 7.5% (value-weighted, contracted) · EPF balance 8.25% (statutory) · EPF new contributions ₹69.4K/mo (₹34.7K employee + ₹34.7K employer, flat, no salary step-up modeled) · Gold 8% (long-run trend, not 2026's bull spike) · existing market-linked corpus optimistic 17% / base 10% / pessimistic 2% (wide spread — reflects real AI/semis + smallcap concentration) · new SIP + May lumpsum optimistic 14.3% / base 9.1% / pessimistic 3.35% (bottom-up blend of the allocation above) · inflation optimistic 4% / base 5% / pessimistic 6% (India CPI ~4–4.5% currently, 5.6% prior-decade average) · FD-alternative tax ≈35.88% effective (30% slab + 15% surcharge + 4% cess, new regime FY2026-27, based on total income including the FD interest landing in the ₹1–2 Cr surcharge band). Immovable property (2 real properties, ~₹3.42 Cr, see Debt & Immovable Assets) is deliberately excluded from this goal entirely, by request — it isn't a bucket in this model at all. Not licensed financial advice — a modeling exercise from your real portfolio and public research, same numbers as the standalone companion sheet with full citations.
           </div>
         </div>
       </div>
