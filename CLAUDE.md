@@ -1,0 +1,258 @@
+# Mina — session memory
+
+Mina is a document-first, AI-assisted household wealth intelligence platform (net worth, investments, taxes, spending, reasoning-over-reporting). Full product spec: `Base resources/investment_app_memo.md` (1196 lines — read it, don't guess from this summary). **This file is build-state truth; the memo is product truth.** When they conflict on a build detail, this file wins (it reflects decisions made after the memo was written).
+
+Build plan for the current phase: `C:\Users\Vinod\.claude\plans\tidy-floating-leaf.md`.
+
+## Locked architecture decisions
+
+| Decision | Why |
+|---|---|
+| **Miso Design System is MANDATORY for all UI work, effective 2026-08-02** — no more invented palettes | User's explicit instruction. The real system was found at `https://claude.ai/design/p/7901307e-8140-4a72-82b4-3654d76d0886` (GitHub: `i-am-wolley/Miso`) and is installed locally at `~/.claude/skills/miso-design/` (global — applies beyond this repo). See "Design tokens" below for what changed. |
+| **Stack: single `index.html`, no build step** — Preact + `htm`, pinned ESM CDN imports (never `@latest`) | Kept from memo §17.2 in case this later merges into a real Miso repo. No bundler, no TypeScript, no JSX transpile (S1). |
+| **UI-first, mock data before backend** | User wants visual progress before infra. Mock fixtures are written to match the memo's §3.2 canonical shapes exactly, so wiring real data later is a data-source swap, not a rewrite. |
+| **Firebase/backend deferred to Stage 8** | Not started. No Firebase project exists yet. Don't assume one when reading this file in a future session. |
+| **"Landing page" = the TODAY tab** | Not a separate marketing page — memo §14B.3/§14B.6 already makes Today's empty state the onboarding invitation. |
+| **Desktop-only for now, mobile deferred — effective 2026-08-02** | User's explicit instruction: "why are u building for mobile... build only for web for now." The memo's mobile-first shell (§17.2, `app-max-w: 440px`, bottom `TabBar`) is **replaced** by wide multi-column content. The 390px/mobile verification steps in the original plan no longer apply until mobile is explicitly revisited (memo §17.2.7's wide-layout pass, inverted — now mobile is the deferred pass, not desktop). |
+| **Nav shell is a TOP bar, not a left sidebar — effective 2026-08-03** | User's explicit instruction: "first in all pages move the sidebar to the top.. we get more estate." The `Sidebar` component (left column, `--sidebar-w`) was fully removed and replaced by `TopNav` (`.topnav`, sticky top row) so every screen gets full-width content instead of losing ~230px to a left rail. `--content-max-w` widened to 1560px to use the reclaimed space. Applies globally (`AppShell` renders `TopNav` once, not per-screen). |
+
+## AI boundaries (memo §16 — P1)
+
+**AI may:** classify/extract document fields (with mandatory arithmetic reconciliation), normalise merchant names, summarise news, resolve ambiguous instrument names, turn a computed flag into prose, translate NL queries into structured queries, explain a concept on demand.
+
+**AI must never:** compute a return/tax/valuation/projection, decide a classification that affects tax treatment (propose only — a deterministic rule confirms), generate a UI number with no code path behind it, or recommend a buy/sell on a specific instrument.
+
+This matters now even in mock-data UI stages: **no chart or card should compute a derived number in the render layer** — mock fixtures should already carry the computed value (e.g. XIRR), never have the UI calculate it from raw transactions. Keep that discipline from day one so it isn't a retrofit at Stage 8.
+
+## File map — `index.html`
+
+Section-banner order per memo §17.2. Update the ✅ column as sections are actually added — don't let this list drift from the file.
+
+| # | Section | Status |
+|---|---|---|
+| 01 | `<head>` · meta · fonts · design tokens (CSS vars) | ✅ |
+| 02 | Global styles · component primitives · motion | ✅ |
+| 03 | ESM imports (pinned) | ✅ |
+| 04 | Firebase init · Auth · App Check | not started (Stage 8) |
+| 05 | Data layer — Firestore reads, offline cache, household scope | not started (Stage 8) |
+| 06 | Content-pack loader (taxonomy, rules, copy, tax packs) | not started |
+| 07 | Formatters — currency, %, dates, locale, jargon glossary | ✅ |
+| 08 | Shared UI — Sheet (not yet), Card, Badge, Sparkline, **Donut** (new), EmptyState, Skeleton | ✅ (Sheet still missing — needed Stage 5) |
+| 09 | Chart wrappers (ECharts, lazy) | **still not started** — the Portfolio donut is a hand-rolled SVG (`Donut` component), deliberately not ECharts, to avoid the dependency for one ring. Sunburst/treemap/correlation-heatmap will need real ECharts when built. |
+| 10 | Screen: Today | ✅ desktop v2 — two-column (`today-grid`: hero+cards+mini-allocation left, agenda+Needs You right) |
+| 11 | Screen: Portfolio (+ Position detail, Analysis) | ✅ **v5, 2026-08-03** — simplified per the "Insights tab" section below: dual hero cards (household + selected scope) → class-button filter bar + Member dropdown → a full-width sortable table (no Institution column, no insights rail anymore — that moved to the Insights tab). Row-click still narrows the scope hero card; deep analysis lives one click away via the new "Insights" link in the table's footnote. Position-detail as a separate drill-down screen still not built — row selection + the Insights tab cover most of that need already. |
+| 12 | Screen: Insights (+ Flag decision, Assumptions) | ✅ **built 2026-08-03** — see "Insights tab" section below for the full design. Class-button + Member filter (same pattern as Portfolio) drive a full-width, data-driven grid of sections (trend/growth, insights, allocation + cross-class comparison at the household level, sector exposure, technical range scan, leaders & laggards, concentration scan, FD maturity ladder, market news) — Mutual Funds keeps its own deeper 7-section panel. Flag-decision / Assumptions sub-screens (memo §11.2/§10) still not built. |
+| 13 | Screen: Money (+ Calendar, Spending, Tax) | ✅ **v2, 2026-08-03** — see "Money tab v2" section below (and v1 below that). Real HDFC Infinia data at two layers: statement summaries (6, Feb–Jul 2026 only) drive spend trend/utilisation/revolving-balance/statement history; 514 real individual transactions (`credit-card-transactions.js`, new this pass) drive a real category mix + a searchable transaction list with a working reclassify popup. Typical-month baseline replaces a misleading flat average. Income/savings-rate/runway still honestly gap-noted (no bank statement on file). No calendar sub-screen or real tax computation yet. |
+| 14 | Sheet: Add / Upload / Review queue (pdf.js, lazy) | not started (Stage 5) |
+| 15 | Settings | not started (Stage 6) — top nav gear icon exists, screen doesn't |
+| 16 | Router · **top nav** shell (replaced sidebar 2026-08-03, which had replaced tab-bar+header) · household switcher | ✅ desktop shell (`TopNav` + `.content`); switcher is visual-only, doesn't filter data yet |
+| 17 | Mount | ✅ |
+
+## Design tokens — Miso Design System (mandatory)
+
+**Superseded 2026-08-02.** The dark neutral fintech palette this file originally described is gone. Every screen must use the real **Miso Design System** — tokens, component shapes, and iconography pulled directly from `https://claude.ai/design/p/7901307e-8140-4a72-82b4-3654d76d0886` (source app: `github.com/i-am-wolley/Miso`, Vinod's own sibling "Pantry OS" app). A working local mirror (tokens + every component `.jsx`) lives at `~/.claude/skills/miso-design/` — **read that skill's `readme.md` before touching any UI**, it's the actual spec, not this summary.
+
+**What's actually in `index.html` section 01 now** — Miso's real values, not paraphrased:
+- Warm paper surface (`--cream-100 #f5f0ea`), warm near-black ink text (`--ink-900 #18140f`) — light theme is canonical; a dark-theme override exists but is secondary (Miso itself is light-first, inverted from what this file said before).
+- Interactive accent is **bronze** (`--bronze-500 #b8935a`), not the invented blue accent.
+- Severity/gain-loss now ride Miso's actual category-accent set, not invented hex values: gain = `--sage-500`, loss = `--danger-500`, flag severity Critical/High/Medium/Watch = danger/terracotta/amber/lilac respectively. Same discipline as before (one ramp, reused everywhere, colour never the sole signal) — just Miso's real hues instead of made-up ones.
+- Type is **Geist** + **Geist Mono** (loaded from Google Fonts per Miso's own `fonts.css` substitution note — swap to licensed binaries if the user ever provides them), not the old system-font stack.
+- Spacing/radii/shadows/motion values are copied verbatim from `tokens/spacing.css` (4px-based scale, `--radius-xl` cards, barely-there `--shadow-card`, 0.12s/0.3s/0.7s durations) — not re-derived.
+- Cards, badges, the tab bar, and the hero number now follow Miso's actual Card/Badge/StatCard/TabBar shapes (hairline border, soft radius, flat warm fill) rather than a fintech dark-card look.
+
+**Iconography — no more emoji, ever.** Mina's `Icon` component (section 08a of `index.html`) uses Miso's real 24×24 hand-drawn stroke technique (`stroke="currentColor"`, `strokeWidth="1.8"`, round caps/joins, no fill except tiny accent dots). Miso's 38 glyphs are food-domain and mostly don't apply here; where Mina needs something Miso doesn't have (`home`, `chart`, `bulb`, `wallet`, `flag`, `newspaper`, `inbox`, `gear`, `plus`, `chevronDown`), new glyphs were hand-drawn in the *identical* technique — never a mismatched icon font, never emoji. `calendar` deliberately aliases Miso's own `menuTab` glyph (it's already a calendar shape). **When a future screen needs an icon not yet in `index.html`'s `Icon` function, check the real 38-glyph list first (`~/.claude/skills/miso-design/readme.md` → Iconography), reuse a generic one if it fits (`sparkle`, `receipt`, `link`, `upload`, `camera`, `image`, `refresh`, `bookmark`), otherwise draw a new one in the same technique. Do not fall back to emoji.**
+
+- **When building any chart, load the `dataviz` skill first** for the categorical/sequential palette logic, but anchor its output hues to Miso's actual accent set (sage/amber/terracotta/lilac/teal + bronze) rather than a generic placeholder palette.
+
+Not frozen — expect refinement (e.g. wiring the actual `_ds_bundle.js` mount pattern) once more screens exist to review against.
+
+## Canonical data shapes (matches memo §3.2)
+
+Fixtures live in `mock-data/`. Each mirrors the real entity shape from the memo so Stage 8 is a swap, not a rewrite:
+
+```
+Household ──< Member ──< Account ──< Position
+                            │
+                            └──< Transaction ──> Instrument
+```
+
+Transaction type vocabulary is closed per memo §3.2 (BUY, SELL, DIVIDEND, …) — don't invent new transaction types in fixtures.
+
+### These fixtures now hold REAL household data, not invented numbers
+
+Mid-build, the user supplied real statements/screenshots (`Base resources/Statements to look and build/`) and asked for them to replace the placeholder Vinod/Keerthana portfolio. Every position in `mock-data/positions.js` and `mock-data/instruments.js` is now sourced from an actual document or a live INDmoney pull, with per-instrument `source` provenance. This is **not** the real backend (still no Firestore, no auth, no ingestion pipeline) — it's real *numbers* sitting in the same static-fixture architecture as before. Treat these files as sensitive when editing: no PAN/UAN/account numbers/addresses were carried in, and that should stay true for any future edits.
+
+**Sources used:**
+- `Vinod MF.pdf`, `Keerthana MF.pdf` — CAMS/KFintech consolidated account statements (mutual funds, real folios/ISINs/units/NAV)
+- `Vinod_india Stocks.png` — Zerodha holdings screenshot (invested amounts); current values refreshed live via the `claude_ai_Indmoney_Vinod` MCP connector (Vinod's account only — see below)
+- `Vinod US Stocks.xls`, `Keerthana us stocks.xls` — Alpaca/DriveWealth order books; net holdings computed from BUY/SELL rows. Vinod's (Alpaca) got live INR values via INDmoney; Keerthana's (DriveWealth) did not — see gaps below
+- `FD With invested and current value _Vinod.png`, `Vinod_RSU.png`, `Keerthana_Gold.png` — screenshots, used as-is
+- `Vinod PF Yearwise investment statement/*.pdf` (2017–2026) — EPFO passbooks; full year-end history captured in `mock-data/epf-history.js`, current balance used in `positions.js`
+- 7 months of HDFC Infinia credit card statements (Jan–Jul 2026) — summary-only in `mock-data/credit-card-statements.js` (no line items; Money tab territory, Stage 4)
+- The `claude_ai_Indmoney_Vinod` MCP connector — used once for `networth_holdings` (MF/IND_STOCK/US_STOCK/FD/EPF, Vinod's account only). **Do not call `networth_snapshot` or other Indmoney MCP tools without the user's explicit go-ahead** — they asked to stop using that connector mid-session.
+
+**Known gaps, deliberately left as `null`/flagged rather than guessed (P8):**
+- Keerthana's 9 DriveWealth US-stock positions are now priced — via a one-time web-search price lookup + spot USD/INR (₹95.40) done on 2026-08-02, recorded in `positions.js` as `PRICE_ASOF`. This is a manual mark, **not** a wired live feed (that's still Stage 8), so don't treat these 9 values as continuously current the way the INDmoney-sourced ones are.
+- No cash/savings account statement for either member — household liquidity is currently invisible to net worth.
+- `householdTotals.delta_today` / `delta_month_pct` / `xirr` / `twr` are still **synthetic placeholders** — real daily deltas need the nightly snapshot pipeline (§15, Stage 8) that doesn't exist yet. The `current_total` and every individual position value are real.
+- `netWorthHistory`'s 90-day sparkline is still a synthetic random walk (see its file header) — only anchored to end at the real `current_total`, not real daily history.
+- The STRUCT-02 flag in `flags.js` is an illustrative scenario layered onto a real holding (Axis ELSS Tax Saver) — no manager-exit is actually confirmed. Said so in the file.
+- ~~Keerthana's US-stock `cost_basis` is stored as `cost_basis_usd`, not INR — so Portfolio's gain% column currently shows `—`~~ **Fixed 2026-08-03**: `gainPctOf()` and `impliedCostBasis()` in `index.html` now check `cost_basis_usd * PRICE_ASOF.usd_inr` whenever `cost_basis` is null, so all 9 DriveWealth positions show a real gain% and feed correctly into peer-comparison/aggregate-return insights.
+
+**2026-08-02, later same day — data freshness pass, then a correction.** The user asked to verify every asset was priced *today*. Vinod's MF/stocks/US-stocks were already live via INDmoney, no change needed. Keerthana's 9 mutual funds were sitting on the 29-Jun CAS NAV, so they were repriced via web-search NAV lookups — **this was a mistake.** Different providers returned different, undated NAVs for the same fund, and one fund (HDFC Sensex Regular) had no real source at all — I estimated it from a proxy calculation and presented it as today's value anyway. The user caught this ("values not accurate") and it was reverted: **all 9 of Keerthana's MF positions are back on the 29-Jun-2026 CAS statement NAV**, clearly labeled as such rather than dressed up as current. Gold ETF and Vinod's RSU kept their web-search updates — those came from single, unambiguous quotes, not the fragmented multi-provider mess the MF lookups hit. `current_total`: ₹4,02,75,896 (original) → ₹4,05,15,753 (bad reprice) → **₹4,03,33,852 (current, corrected)**.
+
+**2026-08-02, same day, third pass — the actual fix.** The user pushed back again ("navs are missing and quantity as well, also the navs are incorrect across") and asked to recheck everything. This turned up the real fix: **AMFI publishes an official daily NAV file** at `portal.amfiindia.com/spages/NAVAll.txt` (~17,700 lines, all schemes, by exact ISIN) — a real regulator-mandated source, not a scraped aggregator. Downloaded it directly and grepped for all 11 held ISINs (Vinod's 2 funds + Keerthana's 9). Two findings: (1) Keerthana's 9 funds got real, dated, corroborated NAVs this time (mostly 31-Jul-2026, one 02-Aug-2026) — no more guessing. (2) **Vinod's 2 funds, which I'd assumed were fine because they came "live via INDmoney," were actually ~0.7% off** the AMFI-declared NAV for the same ISIN — INDmoney's live pull was not as authoritative as the official source. All 11 MF positions now use AMFI data uniformly. `current_total`: → **₹4,05,99,381**. Every position now also carries a `nav` field (see below) for on-screen display.
+
+**Standing lesson — apply this every time NAV/price accuracy comes up:** (1) "Live via a connected account" is not automatically more authoritative than a regulator-published source — check both when you can, don't assume the fancier-sounding one wins. (2) For Indian MF NAVs specifically, **use AMFI's NAVAll.txt by ISIN** (`curl`/`WebFetch` + grep — WebFetch's own summarizer chokes on the file's size and misses schemes, so download it and grep directly). (3) Generic web search across scraper sites remains unreliable for anything price-dated — don't fall back to it for NAVs again. (4) Stocks/RSU/gold still only have single-source web quotes, not independently cross-checked the way the MF NAVs now are — flagged as a smaller residual risk of the same kind, not yet re-verified.
+
+**2026-08-02, fourth pass — stocks and RSU got the same treatment.** User pushed once more ("indian and us stocks also qnt and nav — check it properly"). Found a real, structured, single-authority source for these too: **Yahoo Finance's `query1.finance.yahoo.com/v8/finance/chart/<TICKER>` endpoint** — no key needed, works for both NSE tickers (`.NS` suffix) and US tickers directly, returns `regularMarketPrice` cleanly. Verified all 10 Indian stocks (Solex Energy only resolved as `SOLEX.NS`, not the guessed `SOLEXENERGY.NS`), all 13 US positions (4 Vinod + 9 Keerthana), and the RSU ticker (BUD). Findings: Vinod's stocks/US-stocks (from INDmoney) were already accurate to within ~2%, no real error — but Keerthana's MU (-1.3%) and **ASML (-9.6%, real price $1629 vs the web-search figure of $1801.51)** were genuinely wrong, and RSU/BUD was off **5.9%** ($81.66 vs real $86.48). `current_total`: → **₹4,07,01,024**. Every stock/RSU position now has a `nav_asof` citing Yahoo Finance.
+
+**Updated standing lesson:** the fix for "I don't trust this price" is the same pattern every time — find the *structured, single-authority* API (AMFI for Indian MF NAVs, Yahoo Finance's chart endpoint for stocks/ADRs, both fetched via `curl`/`WebFetch` + parsed directly), never generic web search, which reliably produces multiple disagreeing numbers with no reliable date. If a future asset class needs verification and neither AMFI nor Yahoo covers it, look for that asset class's own equivalent regulator/exchange source before falling back to search.
+
+## Money tab v2 (2026-08-03, fifth build this day) — real line-item transactions, reclassify feature, honest layout fix
+
+The user asked for three things after seeing Money v1: (1) scope to 2026 only, (2) real ideas for depth (typical-month baseline, category evolution, notable events, etc. — proposed first, per the "propose before building" memory), (3) fix the "boxes are random, too much blank space" layout complaint, and — the big one — "the misc, i want to classify them in the right buckets... i want to be able to look at the transactions with an option to classify them... check and implement." That last part meant checking whether the source PDFs actually have line-item transaction detail (they do) and, if so, extracting it for real.
+
+**Data pull**: read all 6 statement PDFs in full (`Base resources/Statements to look and build/2026 credit card statements/`) — each has complete domestic + international transaction tables (date, merchant, amount, rewards, cardholder). Transcribed 514 real transactions into `mock-data/credit-card-transactions.js`. Deliberately excluded: CC PAYMENT rows (paying the bill, not spending), IGST-VPS correction reference lines (tax-adjustment noise tied to a parent transaction, not distinct purchases), PETRO SURCHARGE WAIVER credits, FINANCE CHARGES (already in credit-card-statements.js), 1% DCC adjustment lines, refund/reversal rows.
+
+**The Europe trip (Slovenia/Croatia/Greece, ~25 days) was deliberately aggregated, not itemized line-by-line.** It generated ~130 individual international purchases averaging ~€15 each (gelato, parking, museum tickets). Itemizing every one would (a) bury the transaction list in noise no one needs to "reclassify," and (b) put an excessive amount of granular personal travel detail in a plaintext fixture for no real benefit. Instead: 5 real, summed aggregate entries (`agg: true` flag) — Slovenia/Croatia/Greece legs by real purchase count and total, plus flights/hotels booked abroad, plus international subscriptions. Pre/post-trip domestic spend and the flight/hotel bookings that were domestic-currency-billed (Yatra, GetYourGuide, Goibibo, Etraveli) stayed individually itemized — those are exactly the one-off, ambiguous entries a real classification feature is for.
+
+**Two real double-counting bugs caught and fixed during this pass, before shipping**: (1) Beautiful Bizarre Magazine (₹3,732.88) had been included both as an individual itemized transaction AND inside the "international subscriptions" aggregate sum — removed from the aggregate. (2) The Yatra/GetYourGuide/Goibibo/Etraveli bookings (₹1,57,078 combined) were itemized individually as real domestic transactions AND also summed into a "flights & hotels" aggregate meant to be international-only — removed from that aggregate, which now correctly contains only the genuinely international-currency bookings (Aegean Airlines, Booking.com). Caught by writing a Python validation script that parsed the fixture and cross-checked totals, rather than trusting manual arithmetic across 500+ line items — **the lesson: for any dataset this size, transcribe once into a script and let code do the summing/validation, don't hand-verify arithmetic at this scale.**
+
+**Reclassify feature, built as asked**: `categorizeTransaction(merchant)` — a deterministic, merchant-name-keyword rule set (same pattern as `fundCategoryOf()` for MF categories) — auto-assigns one of 13 categories to every transaction. Clicking any row in the new Transactions section (search + category filter) opens a `ReclassifyModal`; picking a category stores the override in `MoneyScreen`'s React state (in-memory only, resets on reload — no backend exists yet, disclosed in the UI copy) and the Category Mix chart above recomputes live from `realCategoryData(overrides)`. Verified in-browser: reclassifying "Apical Technologies (EMI)" from auto-assigned "Other" to "Shopping" immediately moved the category bars (Shopping 17.6%→19.2%, Other 20.1%→18.4%).
+
+**"Typical month" replaces the flat average** (`typicalMonthData()`): median of the non-outlier months vs. the straight mean, with outlier months (>1.6× median, i.e. the real Europe-trip spike) called out by count rather than hidden inside a blended number — directly answers the "graphs don't show real value" and "average is misleading" complaints together.
+
+**Layout fix — the "random boxes, too much white space" complaint**: `.insights-col` (shared by Insights and Money) changed from CSS grid (`repeat(auto-fit, minmax(...))`, which forces every card in a row to match the tallest one) to a **CSS multi-column masonry layout** (`columns: 2 440px`, `break-inside: avoid` per card, `column-span: all` for the `.span-2` chart sections). Cards now size to their own content and flow into whichever column has room — no more dead gaps. Saved as a standing feedback memory (`feedback_dashboard_layout.md`) since this pattern is reused across screens.
+
+**Value labels added to `MonthlyChart`** (the "I don't even see value in the graphs" complaint) — every point now shows its real value directly on the chart, not just month labels on the x-axis.
+
+**Verified in-browser 2026-08-03**: hard-reload required mid-session (ES module browser cache didn't pick up the edited `credit-card-statements.js` on a normal reload — documented as a recurring gotcha in this session). After that: "3 of 6 months" (not 7) confirms the Dec'25/Jan'26 statement is correctly excluded; Feb–Jul x-axis confirmed; reclassify flow confirmed end-to-end; Insights tab's masonry layout confirmed unaffected (shared CSS class). No console errors.
+
+## Money tab (2026-08-03, fourth build this day) — real credit-card data, honest gaps everywhere else
+
+Stage 4 in the roadmap, built next after the user asked to keep going one screen at a time. Grounded entirely in `mock-data/credit-card-statements.js` — 7 real HDFC Infinia statements (Jan–Jul 2026, both members share one card, Vinod primary/Keerthana add-on) that had been captured earlier in the session but never wired into any screen.
+
+**What's real and shown**: two hero cards (latest statement's purchases + due date; 7-month average spend and utilisation) · a spend-trend line chart (real monthly purchases — May's spike is a real Europe trip the statement itself notes) · a credit-utilisation line chart (`available_credit_limit`/`credit_limit` per statement) · a "revolving balance check" reading the real `finance_charges` field (₹203 total across 3 of 7 months — trivial, called out as such, not alarmist) · a category-mix breakdown, **value-weighted** from each statement's disclosed top-5 categories (`purchases × category%`, summed across all 7 months — a real computation on real per-statement fields, not a fabricated aggregate) · a full statement-history table with a real Paid-in-full/Carried-balance badge per cycle (keyed off `finance_charges > 0`, not the sign of `total_amount_due` — a bug caught and fixed during build, since a positive due amount is just that cycle's normal bill, not evidence of carrying debt).
+
+**What's honestly gap-noted, not fabricated**: the memo's Money tab spec (§14) wants Income/Expenses/Investments/savings-rate/runway and a full "closing loop" reconciliation — none of that is computable without a bank/savings statement, which doesn't exist in this app for either member. A prominent gap-note says so up top rather than inventing plausible-looking numbers. Category mix is also caveated as value-weighted from each statement's own top-5 disclosure, not true line-item spend (no transaction-level data on file — that's Module K / Stage 8+). The **Taxes** block exists but stays deliberately quiet (per the memo's N10 seasonal-promotion rule) — no real capital-gains computation exists yet to show even in-season.
+
+**New shared chart**: `MonthlyChart` — a simple single-series line+dot SVG chart keyed by string month labels rather than the numeric-year x-axis `YearChart` uses; reused for both the spend trend and the utilisation trend.
+
+**Verified in-browser 2026-08-03**: no console errors; a copy bug was caught and fixed mid-QA (the revolving-balance card said "well under ₹200" when the real total is ₹203 — replaced with a number-agnostic "a few hundred rupees" phrasing rather than a wrong hardcoded threshold).
+
+## Insights tab (2026-08-03, third build this day) — Portfolio simplified, deep analysis moved to its own screen
+
+Third pass the same day: the user asked to strip the insights rail back out of Portfolio ("remove the insights coloumn.. extend the table") and instead build the actual **Insights tab** (Stage 3, previously a placeholder) into the comprehensive, class-by-class analysis screen the whole day's work had been building toward — "detailed analysis for each of the assets class and also one together... a section for market analysis/news... use good graphs."
+
+**Portfolio, simplified**: `PortfolioScreen` no longer renders `InsightsArea` at all. `.portfolio-body`'s two-column grid is gone — class-button row + member dropdown + `HoldingsTable` now run the full content width. The two hero cards stay (household + whatever's selected) since they're just numbers, not analysis. Row-click still narrows the scope hero card for a quick value/return check, but the pending-note now points at Insights ("open Insights" — an `.inline-link` that calls the same `onNavigate` used by Today→Portfolio) for anything deeper.
+
+**`InsightsScreen`** (`index.html` §12, new): its own `classId`/`memberId` state (default `all`/`all` = whole-household overview) driving the same `CLASS_BUCKETS` button row, feeding `computeScope(classId, memberId, null)` — note `selectedId` is always `null` here; Insights operates at class granularity, not per-instrument (Portfolio's row-click already covers the per-asset case). A single `ScopeHeroCard` sits above the buttons. Below, the exact same `InsightsArea` (MF panel / general panel) that used to live in Portfolio's rail now renders full width.
+
+**Layout became a real grid, not a narrow rail.** `.insights-col` changed from a `max-height:1400px; overflow-y:auto` flex column (a workaround for cramped rail space, and the source of some scroll-automation friction during QA) to `display:grid; grid-template-columns: repeat(auto-fit, minmax(420px,1fr))` — sections now flow 2–3 wide on a full page and the page just scrolls normally. Chart-bearing sections get a `.span-2` class to run full width.
+
+**`GeneralInsightsPanel`** (replaces the old `StandardInsightsPanel`) is the one component handling every class except MF — it went from 2 possible sections (Trend, optional Sector) to a **data-driven stack of up to 9**, each rendering only when the current scope actually has the underlying real data — this is what makes it "specific per class" without hand-building 5 separate layouts:
+- **Trend** (or, for the single EPF position, a **real growth + projection chart** — solid real EPFO history, dashed continuation at the account's own real CAGR, no fabricated growth rate).
+- **Insights** — the existing `computeScopedInsights()` cards, unchanged.
+- **Allocation + Across asset classes** — overview-only (`classId==='all'`): a real allocation donut (by L1) and a new `classComparisonData()` bar comparison of value + real return across all 6 classes, so the household "one view across everything" the user asked for is a first-class section, not just the household hero number.
+- **Sector exposure** — wherever `scopePositions` include instruments with a real `sector` field (Indian/Foreign Equity, and the combined view in Overview).
+- **Technical range scan** (`technicalScanData`, new) — every stock/RSU in scope plotted on its real 52-week range (0–100%), not just a single flagged name; genuinely more useful at class/household level than the old one-line technical insight.
+- **Leaders & laggards** (`performanceRanking`, new) — real top/bottom performers by gain%, whenever ≥2 positions have cost-basis data.
+- **Concentration scan** (`concentrationFlagsForClass`, new) — every position ≥8% of household net worth, not just the selected one.
+- **Maturity ladder** (`maturityLadderData`, new) — real FD `rate`/`matures`/`value` as a sorted timeline; shows whenever any FD is in scope, including the household overview.
+- **Market analysis & news** — `NewsSection`/`newsForPositions`, now used everywhere (previously MF-only), filtered to whatever's in scope; a real, always-present section per the user's explicit "section for market analysis/news" ask.
+
+**`MFInsightsPanel`** kept its existing 5 sections (growth+projection, composition/overlap, cost & tax, rebalancing, news) and gained the same **Leaders & laggards** and **Concentration scan** sections as the general panel, for consistency.
+
+**Bug found and fixed during this pass**: `scopeReturnMetrics()`'s EPF branch checked `scope.selected?.instrument_id === 'inst_epf_vinod'` — true only when a *row* had been explicitly clicked. The FD branch right next to it correctly checked the scope's resolved `scopePositions` instead. Since `InsightsScreen` never sets a `selectedId` (class buttons only), the EPF hero card was falling through to the generic "Total return vs. benchmark" branch instead of showing its real CAGR. Fixed both `scopeReturnMetrics` and `trendForScope`'s EPF checks to key off `scopePositions` (length 1, right instrument), matching the FD pattern and `GeneralInsightsPanel`'s own (correct) `isEpf` check.
+
+**Known minor artifact, not fixed**: the Insights overview hero occasionally shows the real position-sum total (`scope.scopeTotal`, computed via `.reduce`) a rupee or two off from `householdTotals.current_total` (a separately-maintained constant used elsewhere, e.g. Today/Portfolio's household hero) — ordinary floating-point summation drift across 40 real position values, not fabricated data. Not worth correcting given the ₹1–2 magnitude against a ₹4.07 Cr total.
+
+## Portfolio v4 (2026-08-03, same day) — dual hero cards + sectioned, class-aware insights
+
+Second rebuild the same day, on top of v3, per a very detailed follow-up spec: drop the Institution column and compress the table; add a second hero card next to the household one, showing the *currently selected* class/member/asset's own value + return metrics; move the holdings table full-width below both hero cards; move the trend/insights area to a dedicated right column; and — the bulk of the ask — go deep on Mutual Fund insights specifically as a worked example (growth+projection chart, category/overlap composition, cost & tax, rule-based rebalancing, real news), then generalize the pattern to other classes.
+
+**Layout**: `.portfolio-hero-row` (two cards, 1fr/1fr) sits above `.portfolio-body` (table col `1fr` + insights col `440px`). `PortfolioHeroCard` is unchanged content (household total + XIRR/TWR toggle). `ScopeHeroCard` shows whatever's currently selected (class/member/asset) — its own value, invested amount, and a return-metric pair from `scopeReturnMetrics()`.
+
+**`scopeReturnMetrics()` — the "same representation, honestly filled" rule.** The user asked for "the same XIRR, TWR, overall gain%, invested amount" on the scope card. True per-scope XIRR/TWR isn't computable (no per-lot cash-flow dates — same limitation as the household figure). Rather than fabricate, this function picks the right *real* pair per scope:
+- EPF asset selected → real CAGR (same one the trend chart already computes).
+- An all-FD scope → the real, value-weighted **contracted rate** from each FD's `rate` field (FDs have a guaranteed rate — more honest than a market-style return here).
+- Whole household, no filters → the existing household `xirr`/`twr` placeholders (disclosed-synthetic, unchanged).
+- Everything else (a class, a member, a single stock/MF) → real unrealised **total return** ⇄ the relevant real benchmark's trailing-3-month return, with a caption explaining why this isn't literally XIRR/TWR. No scope ever shows a made-up number in an XIRR/TWR-shaped slot.
+
+**Mutual Funds gets the deep treatment** (`MFInsightsPanel`, triggered whenever `classId==='mf'` OR a selected asset's class is `mf` — so it works for the whole MF sleeve *or* a single fund, same functions, just a narrower `scopePositions` list):
+- **Growth & projection** (`YearChart`, a new hand-rolled multi-series year-axis SVG chart): invested + value curves are an *illustrative* year-by-year reconstruction, seeded and endpoint-anchored to the real total invested/current value (never a real per-year series — that needs CAMS transaction history, Stage 8, honestly captioned). A dashed continuation projects forward using Nifty 50's trailing 3-month return annualized (~6.6% p.a.) — a real-benchmark-derived, disclosed assumption, not an invented growth rate, and explicitly captioned "not a forecast or advice" per the AI boundaries (no advice, no ungrounded numbers).
+- **Composition & overlap** (`mfCompositionData`): fund category (Index/ELSS/Smallcap/Midcap/Flexicap/Active) via a real name-based heuristic (`fundCategoryOf`), rendered as real % bars. Overlap detection is **ISIN-based, not guessed**: it caught that Keerthana's two Parag Parikh Flexi Cap folios share one ISIN (literally the same fund twice), plus a Flexicap-category duplication flag (PPFAS + quant). Sector/stock-level look-through is honestly gap-noted (no fund holdings-disclosure data on file) rather than fabricated.
+- **Cost & tax**: real total unrealised gain, with an LTCG(12.5% above ₹1.25L exemption)/STCG(20%) explanation caveated for lacking per-lot dates. Expense ratio is an explicit gap note, **not a fabricated number** — flagged as a good next real-data pass (same AMFI/Yahoo-Finance pattern already used elsewhere), rather than guessing a plausible-looking TER.
+- **Rebalancing** (`mfRebalancingBullets`): real, rule-based checks only — 3+ small/midcap funds, low index-fund %, and reusing the real overlap count. 1/3/5yr rolling returns and full sector-overweight are gap-noted (need historical fund NAV series, e.g. an mfapi.in-style API — roadmap, not built).
+- **News & signals**: reuses the existing `newsDigest` fixture, filtered to instruments in scope, mapped red/amber/green by its real `impact` field — no new fabricated sentiment engine.
+
+**Every other class/asset** (`StandardInsightsPanel`) keeps the v3 trend chart + `computeScopedInsights()` cards, now inside the same sectioned right column, plus a new **real sector-exposure bar section** (`sectorBreakdownData`) for Indian Equity / Foreign Equity / All — the one place besides direct-stock instruments where a real `sector` field exists, so this class of insight is only shown where it's actually backed by data.
+
+**Verified in-browser 2026-08-03**: no console errors across the household/class/FD/MF hero-card variants, the full MF section stack (growth chart → composition → cost & tax → rebalancing → news), and single-fund selection (Axis ELSS) correctly narrowing every section to that one holding.
+
+## Portfolio v3 (2026-08-03) — class-button dashboard with scope-aware analysis
+
+Full rebuild per the user's detailed spec ("first in all pages move the sidebar to the top... categorise the table with asset class MF, indian equity, foreign equity, epf, fixed income as buttons... bottom needs to be a trend for the selection... insights... think deep and implement, this cannot be normal"). Replaces Portfolio v2 (donut + 6-lens dropdown + member chips + search + grouped table + 8 static insights).
+
+**Layout**: `.portfolio-top` is a 280px/1fr grid. Left (sticky): the big hero value + XIRR⇄TWR toggle, unchanged from v2 ("perfect" per the user). Right: a class-button row (`CLASS_BUCKETS` in `index.html` §11 — All/Mutual Funds/Indian Equity/Foreign Equity/EPF/Fixed Income/Real Assets, each showing a live count) plus a Member `<select>`, then the holdings table. **Default class: Foreign Equity** (per spec). `Real Assets` (Gold ETF) was added beyond the 5 the user named, since Gold didn't fit any of the 5 and needed a home. Below both columns, full-width: `.analysis-row`, a trend chart + insights column that responds to whatever is currently selected.
+
+**Selection model**: `classId` (button) × `memberId` (dropdown) filter the table. Clicking a row additionally sets `selectedId`, scoping the trend+insights row to that one asset; clicking the same row again clears it. Changing class/member clears any row selection. When nothing is row-selected, the trend+insights scope is the current class/member filter (or the whole household if both are "All") — this satisfies "if none selected then for the entire portfolio."
+
+**Trend chart** (`TrendChart` component, hand-rolled SVG, no charting lib): dual-line, **both series rebased to start=100** and plotted by fractional index position rather than date, specifically so a 90-point illustrative series and a 30-point real benchmark series (different lengths, different timescales) can share one 0–1 x-axis without pretending to be date-aligned. Two data sources, deliberately not blurred together:
+- **EPF, when the individual EPF asset row is selected**: the ONE real, decade-scale series in the app (`epf-history.js`, real EPFO yearly balances 2018–2026). Shown alone, no benchmark overlay — a 9-year EPF series against a 3-month equity index would be a misleading comparison, so the benchmark is intentionally omitted for EPF and replaced with a real CAGR figure instead of the usual "aggregate unrealised return."
+- **Everything else**: `buildIllustrativeTrend()` — a seeded random walk from the scope's implied cost basis to its current value, clearly labeled "Illustrative" in the card. Overlaid with a REAL 3-month benchmark line from `market-data.js` (`BENCHMARKS.nifty50` for INR-majority scopes, `BENCHMARKS.nasdaq` for USD-majority scopes) — real data, but explicitly captioned "not a precise same-period comparison" since the illustrative side isn't date-matched to it.
+
+**"XIRR/TWR across assets, classes, benchmark, own growth"**: household-level XIRR/TWR (still synthetic, per the known-gaps note above) stayed in the hero exactly as before. Below that, every scope (class/member/asset) gets its own **real, computed** value-weighted "aggregate unrealised return" (`scope.aggReturn` in `computeScope()`) plus the real benchmark's trailing-3-month return — this is the honest stand-in for a true per-scope XIRR, which isn't computable yet without per-lot cashflow dates (same limitation as the household figure).
+
+**Insight engine** (`computeScopedInsights()`): two branches.
+- **Asset selected**: `technicalInsight()` (52-week range position + day range + volume, only for instruments carrying a `tech` object — i.e. stocks/RSU, not MF/FD/EPF/Gold, which correctly get no fabricated technical read), `peerComparisonInsight()` (real gain% vs. the average of same-class peers, flags >12pt underperformance or >25pt outperformance), `concentrationInsight()` (flags >8% of household net worth), plus any `SPECIAL_BY_INSTRUMENT` entry for that specific holding (reuses the 8 original portfolio-wide insights — e.g. selecting the RSU surfaces the employer-concentration insight, selecting either Sensex fund surfaces the direct-vs-regular cost-drag insight).
+- **Class/member/portfolio scope**: `CLASS_RELEVANT[classId]` picks which of the 8 original insights actually apply to that asset class (e.g. Fixed Income gets the NBFC-credit-risk + liquidity insights, not the semiconductor-theme one), plus two dynamic ones computed fresh from whatever's currently filtered: `sectorConcentrationInsight()` (real sector data from `instruments.js`, flags >28% concentration in one sector) and a peer-underperformer flag computed from the filtered set's own gain% spread.
+
+All of this reads real fields already in `positions.js`/`instruments.js`/`market-data.js`/`epf-history.js` at render time — nothing in the insight engine is a hardcoded string, consistent with the P8/P1 discipline (AI boundaries section above) of never generating a UI number with no code path behind it.
+
+**Verified in-browser 2026-08-03**: no console errors across Today, Portfolio "All" grouped view, every class button, member dropdown, and row-selection (tested NVDA — technical/performance/concentration/theme insights all populated correctly; tested EPF — real CAGR trend with no benchmark, as designed).
+
+## Display convention: NAV and quantity
+
+Every position in `positions.js` now carries `units` (quantity held) and `nav` (price per unit, in the instrument's native currency) wherever known, alongside `current_value`. **Any UI that lists a holding should show units and NAV, not just the total value** — this is what let the AMFI mismatch above actually get caught; a bare total value can't be sanity-checked by the user, `units × nav` can. Keep this going forward for any new holdings screen.
+
+**Resolved:** Vinod's FDs showed a real discrepancy — the screenshot's 3 named FDs (Shriram Finance + 2 HDFC Bank, ₹25L invested / ₹29.54L current) vs. INDmoney's own live aggregate (₹15L invested / ₹17.46L current, unnamed single bucket, likely missing the NBFC deposit). Asked the user directly 2026-08-02; they confirmed **trust the screenshot's 3 named FDs** — that's what's in `positions.js`. Don't re-raise this unless new FD data shows up.
+
+## Build status
+
+| Stage | Scope | Status |
+|---|---|---|
+| 0 | Repo scaffold, design tokens, shell, mock fixtures | done — **rebuilt 2026-08-03**: top nav shell replaces sidebar (see decision table above) |
+| 1 | TODAY tab (landing) | done (v2, desktop) — two-column (`today-grid`), hero+What Changed+mini-allocation-donut left, agenda+Needs You right, real household data, verified in-browser, no console errors |
+| 2 | PORTFOLIO tab | done (**v5, 2026-08-03**) — see "Insights tab" section above for the full design: dual hero cards (household + selected scope, honest per-scope return metrics), class-button filter (default Foreign Equity) + Member dropdown + a full-width compressed sortable table (no Institution column). The insights rail was removed from this screen and moved to its own tab. **Not yet built**: full sunburst/treemap chart (Donut is still hand-rolled SVG, not ECharts), a dedicated Position-detail screen (row selection + the Insights tab cover much of this already), remaining lenses from memo §7 (geography/theme/conviction), Glance⇄Study toggle |
+| 3 | INSIGHTS tab | done (**2026-08-03**) — see "Insights tab" section above for the full design: class-button + Member filter drive a full-width, data-driven grid — trend/real-growth, insight cards, household allocation + cross-class comparison (overview only), sector exposure, technical range scan, leaders & laggards, concentration scan, FD maturity ladder, and market news, each rendering only where the underlying data actually supports it. Mutual Funds gets its own deeper 7-section panel (growth+projection, composition/overlap, cost & tax, rebalancing, leaders/laggards, concentration, news). **Not yet built**: flag-decision/assumptions sub-screens (memo §10/§11.2), 1/3/5yr rolling returns and expense ratios (both honestly gap-noted pending a real data source), true fund look-through for sector/stock exposure. |
+| 4 | MONEY tab | done (**2026-08-03**) — see "Money tab" section below for the full design |
+| 5 | ADD sheet / review queue UI | not started |
+| 6 | Settings screen | not started — sidebar nav link exists (`Sidebar` component), no screen behind it |
+| 7 | Mobile layout pass | **deferred, not started** — was "wide/tablet pass" when mobile was the default; now inverted. Desktop is the default build target (see decision table). Revisit only if the user asks for mobile back. |
+| 8 | Real Firebase backend + ingestion pipeline | not started |
+
+## Open decisions (memo §19 — deferred, not blocking current UI stages)
+
+- Firestore region (`asia-south1`? — check before creating any real Firebase project; immutable after creation)
+- Base currency and single- vs multi-jurisdiction tax model
+- History reconstruction epoch (how many years of statements to backfill)
+- Illiquid asset valuation policy (frequency, source, caveat prominence)
+- Advice boundary (categories + trade-offs only, never specific products — already a hard rule, not actually open)
+- Ledger store timing (Firestore vs relational-shaped-in-Firestore vs Cloud SQL later) — decide at Stage 8/Phase 4, not now
+
+None of these block Stages 0–7. Don't resolve them prematurely; don't forget they exist.
+
+## Session conventions (easy to accidentally violate)
+
+- No comments unless the WHY is non-obvious. No multi-line doc blocks.
+- No client-side money math (S8) — even in mock stages, fixtures carry pre-computed values; the render layer never derives XIRR/returns/tax from raw transactions.
+- **Desktop-first now, not mobile-first** (superseded 2026-08-02 — see decision table). Design for `--content-max-w: 1560px` (widened 2026-08-03 when the sidebar became a top bar) with multi-column layouts. Mobile (390px) is Stage 7, deferred, not the default target — don't reflexively build for a 480px frame anymore.
+- **Nav lives in a top bar, not a left sidebar** (superseded 2026-08-03 — see decision table). Don't reintroduce a `Sidebar`/left rail without the user asking; the whole point was reclaiming horizontal space.
+- `Glance ⇄ Study` toggle is per-member, not per-household (memo §14B.5) — not built yet, still applies whenever it is.
+- Today: max 3 "what changed" cards (N4) — this survived the desktop rewrite; it's an attention-budget rule, not a screen-size one. Insights: max 5 active flags (N4, §11.3, not yet built).
+- Max 4 charts per screen (N5); one message per chart (N6). Portfolio's insight cards are text+numbers, not charts — doesn't count against this.
+- Nav is frozen at four sections (Today/Portfolio/Insights/Money) — was "tab bar," then `Sidebar`'s `NAV_ITEMS`, now `TopNav`'s `NAV_ITEMS`. Same rule (N7), new component.
+- Undo, not confirm (U5) — no "Are you sure?" dialogs except delete-account/export.
+- Indian numbering by locale (₹3.93 Cr, not ₹39,300,000) — U9.

@@ -1,0 +1,7 @@
+# Raw source statements (CAMS/EPFO/credit-card PDFs, screenshots) — contain full
+# account numbers / PAN / addresses. The scrubbed data derived from these lives in
+# mock-data/*.js instead. Never remove this line without re-checking that content.
+Base resources/Statements to look and build/
+
+# Local Claude Code settings
+.claude/settings.local.json

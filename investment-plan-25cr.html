@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The ₹25 Cr Plan</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap");
+
+  :root {
+    --cream-50:  #faf7f2;
+    --cream-100: #f5f0ea;
+    --cream-300: #ece7e0;
+    --sand-300:  #e2dcd5;
+    --sand-400:  #c8c0b8;
+    --sand-500:  #9e9890;
+    --stone-600: #6b6560;
+    --ink-900:   #18140f;
+    --white:     #ffffff;
+
+    --bronze-400: #c8a96e;
+    --bronze-500: #b8935a;
+    --bronze-600: #a07c46;
+
+    --sage-500: #6f9e80; --sage-wash: #e8efe9;
+    --amber-500: #e3a14e; --amber-wash: #fbf0df;
+    --terracotta-500: #e8876b; --terracotta-wash: #fbe7e0;
+    --lilac-500: #9c8fc2; --lilac-wash: #eeebf5;
+    --danger-500: #c0392b; --danger-wash: #f8e3e0;
+
+    --surface-app: var(--cream-100);
+    --surface-card: var(--white);
+    --surface-sunken: var(--cream-300);
+    --text-primary: var(--ink-900);
+    --text-secondary: var(--stone-600);
+    --text-tertiary: var(--sand-500);
+    --border-hairline: var(--sand-300);
+    --border-strong: var(--sand-400);
+    --accent: var(--bronze-500);
+    --accent-hover: var(--bronze-600);
+
+    /* chart-only slots — validated with scripts/validate_palette.js, both modes.
+       These are a reserved set distinct from the brand wash colors above:
+       Miso's own sage/amber read as too low-chroma to clear the categorical
+       CVD gate, so the scenario/allocation series use their own steps. */
+    --chart-surface: var(--white);
+    --chart-grid: var(--sand-300);
+    --chart-axis: var(--sand-400);
+    --scen-optimistic: #0ca30c;
+    --scen-base: #2a78d6;
+    --scen-pessimistic: var(--danger-500);
+    --alloc-india-large: #eb6834;
+    --alloc-india-mid: #1baf7a;
+    --alloc-global: #eda100;
+    --alloc-em: #e87ba4;
+
+    --font-sans: "Geist", "Inter", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700; --fw-heavy: 800; --fw-black: 900;
+    --fs-hero: 40px; --fs-title: 24px; --fs-heading: 18px; --fs-body: 15.5px; --fs-sm: 14px;
+    --fs-meta: 13px; --fs-micro: 12px; --fs-label: 11px; --fs-stat: 30px;
+    --ls-display: -0.02em; --ls-label: 0.08em;
+
+    --space-1: 4px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --space-5: 16px;
+    --space-6: 20px; --space-7: 24px; --space-8: 32px; --space-10: 44px; --space-12: 60px;
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 14px; --radius-xl: 16px; --radius-pill: 999px;
+    --shadow-card: 0 2px 14px rgba(40,30,20,0.06);
+    --content-w: 900px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface-app: #0d0d0d;
+      --surface-card: #181818;
+      --surface-sunken: #1e1e1e;
+      --text-primary: #f2ede8;
+      --text-secondary: #9a9a9a;
+      --text-tertiary: #5c5c5c;
+      --border-hairline: #262626;
+      --border-strong: #333333;
+      --accent: var(--bronze-400);
+      --accent-hover: #d8bd86;
+      --chart-surface: #181818;
+      --chart-grid: #2c2c2a;
+      --chart-axis: #383835;
+      --scen-base: #3987e5;
+      --alloc-india-large: #d95926;
+      --alloc-india-mid: #199e70;
+      --alloc-global: #c98500;
+      --alloc-em: #d55181;
+      --sage-wash: rgba(111,158,128,0.16);
+      --amber-wash: rgba(227,161,78,0.16);
+      --danger-wash: rgba(192,57,43,0.18);
+      --lilac-wash: rgba(156,143,194,0.18);
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface-app: #0d0d0d;
+    --surface-card: #181818;
+    --surface-sunken: #1e1e1e;
+    --text-primary: #f2ede8;
+    --text-secondary: #9a9a9a;
+    --text-tertiary: #5c5c5c;
+    --border-hairline: #262626;
+    --border-strong: #333333;
+    --accent: var(--bronze-400);
+    --accent-hover: #d8bd86;
+    --chart-surface: #181818;
+    --chart-grid: #2c2c2a;
+    --chart-axis: #383835;
+    --scen-base: #3987e5;
+    --alloc-india-large: #d95926;
+    --alloc-india-mid: #199e70;
+    --alloc-global: #c98500;
+    --alloc-em: #d55181;
+    --sage-wash: rgba(111,158,128,0.16);
+    --amber-wash: rgba(227,161,78,0.16);
+    --danger-wash: rgba(192,57,43,0.18);
+    --lilac-wash: rgba(156,143,194,0.18);
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0ms !important; transition-duration: 0ms !important; } }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--surface-app);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent); color: var(--white); }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .page { max-width: var(--content-w); margin: 0 auto; padding: var(--space-10) var(--space-6) var(--space-12); }
+  .wide { max-width: 1080px; }
+
+  .kicker { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: var(--fs-hero); font-weight: var(--fw-black); letter-spacing: var(--ls-display); text-wrap: balance; margin: var(--space-3) 0 var(--space-3); line-height: 1.08; }
+  h2 { font-size: var(--fs-title); font-weight: var(--fw-heavy); letter-spacing: var(--ls-display); margin: 0 0 var(--space-2); text-wrap: balance; }
+  h3 { font-size: var(--fs-heading); font-weight: var(--fw-bold); margin: 0 0 var(--space-2); }
+  p { margin: 0 0 var(--space-4); color: var(--text-secondary); max-width: 68ch; }
+  .lede { font-size: 17px; color: var(--text-secondary); max-width: 62ch; }
+  .section { margin-top: var(--space-12); }
+  .section-head { margin-bottom: var(--space-6); }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .masthead { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-6); flex-wrap: wrap; border-bottom: 1px solid var(--border-hairline); padding-bottom: var(--space-6); }
+  .masthead-meta { text-align: right; font-size: var(--fs-meta); color: var(--text-tertiary); }
+  .masthead-meta div + div { margin-top: 2px; }
+
+  .hero-verdict { margin-top: var(--space-8); padding: var(--space-7); border-radius: var(--radius-xl); background: var(--surface-card); border: 1px solid var(--border-hairline); box-shadow: var(--shadow-card); }
+  .hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-5); margin-top: var(--space-6); }
+  .hero-stat-label { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-tertiary); }
+  .hero-stat-value { font-family: var(--font-mono); font-size: 22px; font-weight: var(--fw-bold); letter-spacing: var(--ls-display); margin-top: var(--space-2); }
+  .verdict-line { font-size: 17px; font-weight: var(--fw-medium); line-height: 1.55; }
+  .verdict-line strong { font-weight: var(--fw-bold); }
+
+  .card { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); padding: var(--space-6); }
+  .card-grid { display: grid; gap: var(--space-5); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 760px) { .grid-4, .grid-3, .grid-2, .hero-stats { grid-template-columns: 1fr 1fr; } }
+
+  .stat-card { padding: var(--space-5); border-radius: var(--radius-lg); background: var(--surface-card); border: 1px solid var(--border-hairline); }
+  .stat-label { font-size: var(--fs-micro); color: var(--text-tertiary); font-weight: var(--fw-semibold); }
+  .stat-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: var(--fw-bold); letter-spacing: var(--ls-display); margin-top: 4px; }
+  .stat-sub { font-size: var(--fs-meta); color: var(--text-secondary); margin-top: 4px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--radius-pill); font-size: var(--fs-micro); font-weight: var(--fw-bold); white-space: nowrap; }
+  .badge.good { background: var(--sage-wash); color: var(--sage-500); }
+  .badge.warn { background: var(--amber-wash); color: var(--amber-500); }
+  .badge.bad { background: var(--danger-wash); color: var(--danger-500); }
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  .research-card { display: flex; flex-direction: column; gap: var(--space-2); }
+  .research-card .kicker-sm { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-tertiary); }
+  .research-card p { font-size: var(--fs-sm); margin-bottom: var(--space-2); }
+  .cite { font-size: var(--fs-micro); color: var(--text-tertiary); }
+  .cite a { color: var(--text-tertiary); text-decoration-color: var(--border-strong); }
+  .cite a:hover { color: var(--accent); }
+
+  .legend { display: flex; gap: var(--space-6); flex-wrap: wrap; font-size: var(--fs-meta); font-weight: var(--fw-semibold); margin-top: var(--space-4); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .legend-swatch.line { width: 16px; height: 3px; border-radius: 2px; }
+
+  .chart-wrap { overflow-x: auto; }
+  svg text { font-family: var(--font-sans); fill: var(--text-secondary); }
+  .chart-value-label { font-family: var(--font-mono); font-weight: var(--fw-bold); font-size: 12px; fill: var(--text-primary); }
+  .chart-axis-label { font-size: 11px; fill: var(--text-tertiary); }
+
+  table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-hairline); }
+  th { font-size: var(--fs-micro); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-tertiary); }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  .table-wrap { border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-card); }
+  .table-wrap table { margin: 0; }
+  .table-scroll { overflow-x: auto; }
+
+  .alloc-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) 0; border-bottom: 1px solid var(--border-hairline); }
+  .alloc-row:last-child { border-bottom: none; }
+  .alloc-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+  .alloc-name { font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
+  .alloc-note { font-size: var(--fs-micro); color: var(--text-tertiary); }
+  .alloc-pct { font-family: var(--font-mono); font-weight: var(--fw-bold); width: 52px; text-align: right; flex-shrink: 0; }
+  .alloc-amt { font-family: var(--font-mono); font-weight: var(--fw-bold); width: 108px; text-align: right; flex-shrink: 0; }
+
+  .framework-list { display: flex; flex-direction: column; gap: var(--space-5); counter-reset: fw; }
+  .framework-item { display: flex; gap: var(--space-5); }
+  .framework-num { font-family: var(--font-mono); font-weight: var(--fw-bold); color: var(--accent); font-size: var(--fs-sm); flex-shrink: 0; width: 22px; }
+  .framework-item h4 { margin: 0 0 4px; font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+  .framework-item p { margin: 0; font-size: var(--fs-sm); }
+
+  .assumptions dt { font-weight: var(--fw-semibold); color: var(--text-primary); margin-top: var(--space-4); font-size: var(--fs-sm); }
+  .assumptions dt:first-child { margin-top: 0; }
+  .assumptions dd { margin: 2px 0 0; color: var(--text-secondary); font-size: var(--fs-sm); }
+
+  .disclaimer { font-size: var(--fs-meta); color: var(--text-tertiary); border-top: 1px solid var(--border-hairline); padding-top: var(--space-5); margin-top: var(--space-8); }
+  footer { margin-top: var(--space-10); padding-top: var(--space-6); border-top: 1px solid var(--border-hairline); font-size: var(--fs-meta); color: var(--text-tertiary); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div>
+      <div class="kicker">Household growth plan</div>
+      <h1>The ₹25 Cr Plan</h1>
+      <p class="lede">A 10-year roadmap for Vinod &amp; Keerthana's household portfolio — modeled against your own real holdings and researched against current India/global market valuations, with optimistic, base, and pessimistic scenarios worked through explicitly.</p>
+    </div>
+    <div class="masthead-meta">
+      <div>Built 2 Sep 2026</div>
+      <div>Horizon: Sep 2026 → Sep 2036</div>
+      <div>Companion to the Mina household ledger</div>
+    </div>
+  </header>
+
+  <div class="hero-verdict">
+    <div class="verdict-line" id="verdictLine">Computing…</div>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-label">Goal</div>
+        <div class="hero-stat-value">₹25.00 Cr</div>
+      </div>
+      <div>
+        <div class="hero-stat-label">Current net worth</div>
+        <div class="hero-stat-value">₹4.07 Cr</div>
+      </div>
+      <div>
+        <div class="hero-stat-label">New monthly investment</div>
+        <div class="hero-stat-value">₹2.34 L <span style="font-size:13px;color:var(--text-tertiary);font-weight:600;">+5%/yr</span></div>
+      </div>
+      <div>
+        <div class="hero-stat-label">Required blended CAGR</div>
+        <div class="hero-stat-value">15.5%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CURRENT SNAPSHOT ============ -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">01 — Starting point</div>
+      <h2>What you're actually starting with</h2>
+      <p>Real household data as of 2 Aug 2026 (AMFI NAVs + Yahoo Finance quotes) — not a placeholder. This plan doesn't touch these existing holdings; it only decides where the new ₹2.34L/month goes.</p>
+    </div>
+    <div class="card-grid grid-4">
+      <div class="stat-card">
+        <div class="stat-label">Market-linked (MF · stocks · US · RSU)</div>
+        <div class="stat-value">₹2.92 Cr</div>
+        <div class="stat-sub">72% of net worth — already heavy in India small/midcap and US AI/semis, see Research below</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">EPF</div>
+        <div class="stat-value">₹53.1 L</div>
+        <div class="stat-sub">Statutory ~8.25%, held out of the market scenarios</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gold ETF</div>
+        <div class="stat-value">₹32.4 L</div>
+        <div class="stat-sub">Existing holding, own trend — not part of new allocation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Fixed deposits</div>
+        <div class="stat-value">₹29.5 L</div>
+        <div class="stat-sub">Contracted ~7.5% avg, matures 2028–2033</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESEARCH ============ -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">02 — Market research</div>
+      <h2>Where India and global markets actually stand today</h2>
+      <p>The scenario CAGRs below aren't guesses — each is anchored to one of these findings. Full citations at the bottom of each card.</p>
+    </div>
+    <div class="card-grid grid-3">
+      <div class="card research-card">
+        <div class="kicker-sm">India — Large-cap</div>
+        <h3>Fairly valued, the best risk-adjusted bet on the table</h3>
+        <p>Nifty 50 PE ≈ 20.4 (Aug 2026), below its 10-year median of 23.4. From this valuation band, historical 5-year forward returns have median'd ~9.6% and were positive in 100% of windows. Paired with India's ~9–10% nominal GDP growth, this is the closest thing to a structurally-supported core holding in the household.</p>
+        <div class="cite">Sources: <a href="https://indexpe.in/nifty-50" target="_blank" rel="noopener">indexpe.in</a>, <a href="https://trendlyne.com/equity/PE/NIFTY/1887/nifty-50-price-to-earning-ratios/" target="_blank" rel="noopener">trendlyne.com</a></div>
+      </div>
+      <div class="card research-card">
+        <div class="kicker-sm">India — Mid &amp; Smallcap</div>
+        <h3>Already expensive — and you're already overweight here</h3>
+        <p>Nifty Midcap 150 trades near PE 27, Smallcap 250 near PE 38 — both well above their ~17–20x long-run averages. You already hold Tata Midcap150, HDFC Midcap, and Axis Smallcap. Adding fresh money here means doubling down on the household's most stretched valuation, not diversifying it.</p>
+        <div class="cite">Sources: <a href="https://medium.com/@finomicsedge/the-indian-market-valuation-puzzle-why-large-caps-look-fair-while-small-caps-still-scream-daf79ba12798" target="_blank" rel="noopener">Finomics Edge</a>, <a href="https://www.whalesbook.com/news/English/stock-investment-ideas/Indias-Mid-Small-Caps-Soar-but-High-Valuations-Raise-Concerns/6a02a001e43db892c2bbd650" target="_blank" rel="noopener">Whalesbook</a></div>
+      </div>
+      <div class="card research-card">
+        <div class="kicker-sm">US — S&amp;P 500 / Nasdaq</div>
+        <h3>2nd-highest valuation in 140 years — and a concentration risk you already hold directly</h3>
+        <p>Shiller CAPE ≈ 41.6 (Aug 2026), behind only Dec-1999. Shiller's own model implies ~1.3%/yr over the next decade; JPMorgan and Vanguard cluster at 4–6%. Separately, the top 10 S&amp;P names are ~40% of the index and AI/semis bubble-risk indicators are elevated — and your 13 direct US holdings (NVDA, AMD, MU, TSM, AVGO, ASML, MRVL, ALAB…) plus the AB InBev RSU are already concentrated exactly there.</p>
+        <div class="cite">Sources: <a href="https://www.gurufocus.com/economic_indicators/56/sp-500-shiller-cape-ratio" target="_blank" rel="noopener">GuruFocus</a>, <a href="https://www.fool.com/investing/2026/04/12/sp-500-in-10-years-nobel-laureate-robert-shiller/" target="_blank" rel="noopener">The Motley Fool</a>, <a href="https://www.forbes.com/sites/petercohan/2026/07/08/intel-stock-down-21-inside-the-july-2026-semiconductor-selloff/" target="_blank" rel="noopener">Forbes</a></div>
+      </div>
+      <div class="card research-card">
+        <div class="kicker-sm">Emerging Markets ex-India</div>
+        <h3>Cheaper, but the forecast is muted too — a small satellite, not a core bet</h3>
+        <p>EM ex-US trades at a discount to the US on earnings/book value, but 10-year forward return consensus (Vanguard-style capital market assumptions) sits at just 2–4% — valuations have already rallied. The offsetting positive: 2026 consensus EPS growth for EM (~21%) beats the US (~15%) and developed markets (~13%), which is why this earns a modest allocation slot, not a large one.</p>
+        <div class="cite">Sources: <a href="https://www.ssga.com/us/en/individual/insights/emerging-market-equities-outlook-q1-2026" target="_blank" rel="noopener">State Street</a>, <a href="https://www.personalinvesting.jpmorgan.com/guides/our-investment-outlook/emerging-markets" target="_blank" rel="noopener">J.P. Morgan</a></div>
+      </div>
+      <div class="card research-card">
+        <div class="kicker-sm">India — Macro tailwind</div>
+        <h3>The structural case underneath the large-cap allocation</h3>
+        <p>Real GDP growth forecast at ~6.8–6.9% for 2026–27 (Goldman Sachs, IMF), nominal GDP growth ~9–10%. Equity returns over long horizons tend to track nominal earnings growth — this is the fundamental tailwind the large-cap allocation is actually betting on, not momentum.</p>
+        <div class="cite">Sources: <a href="https://www.goldmansachs.com/insights/articles/the-outlook-for-indias-economy-in-2026-amid-new-us-tradedeal" target="_blank" rel="noopener">Goldman Sachs</a>, <a href="https://tradingeconomics.com/india/gdp-growth-annual" target="_blank" rel="noopener">Trading Economics</a></div>
+      </div>
+      <div class="card research-card">
+        <div class="kicker-sm">Gold</div>
+        <h3>Real bull run under way — but deliberately excluded here</h3>
+        <p>J.P. Morgan targets $6,000/oz by end-2026; long-run historical trend ~8%/yr. Your existing HDFC Gold ETF holding (₹32.4L) keeps compounding at that trend in the model below. Per your instruction, no new money in this plan goes to gold, FDs, or any other safety/diversifier bucket — this is a pure growth allocation.</p>
+        <div class="cite">Sources: <a href="https://www.jpmorgan.com/insights/global-research/commodities/gold-prices" target="_blank" rel="noopener">J.P. Morgan</a>, <a href="https://www.goldrepublic.com/en-us/gold-price/forecast" target="_blank" rel="noopener">GoldRepublic</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCENARIOS ============ -->
+  <section class="section wide">
+    <div class="section-head">
+      <div class="kicker">03 — Scenario planning</div>
+      <h2>Optimistic, base, and pessimistic — 10 years out</h2>
+      <p>Every bucket compounds at its own real rate: FD at its contracted ~7.5%, EPF at the statutory ~8.25%, gold at its ~8% trend. Only the market-linked existing holdings and the new SIP flex with the scenario — using the bottom-up blend from the allocation in section 05 for the new money, and a wider optimistic/pessimistic spread for the existing holdings to reflect their real concentration risk (see Research above).</p>
+    </div>
+    <div class="card">
+      <div class="chart-wrap"><svg id="scenarioChart" width="1000" height="420" viewBox="0 0 1000 420" role="img" aria-label="Ten year portfolio projection under three scenarios"></svg></div>
+      <div class="legend" id="scenarioLegend"></div>
+    </div>
+
+    <div class="card-grid grid-3" style="margin-top:var(--space-5);">
+      <div class="stat-card" style="border-left:3px solid var(--scen-optimistic);">
+        <span class="badge good"><span class="badge-dot"></span>Optimistic</span>
+        <div class="stat-value" id="statOptTotal" style="margin-top:10px;">—</div>
+        <div class="stat-sub" id="statOptSub">—</div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid var(--scen-base);">
+        <span class="badge warn"><span class="badge-dot"></span>Base case</span>
+        <div class="stat-value" id="statBaseTotal" style="margin-top:10px;">—</div>
+        <div class="stat-sub" id="statBaseSub">—</div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid var(--scen-pessimistic);">
+        <span class="badge bad"><span class="badge-dot"></span>Pessimistic</span>
+        <div class="stat-value" id="statPessTotal" style="margin-top:10px;">—</div>
+        <div class="stat-sub" id="statPessSub">—</div>
+      </div>
+    </div>
+
+    <div class="table-wrap table-scroll" style="margin-top:var(--space-5);">
+      <table id="yearTable"><thead><tr><th>Year</th><th class="num">Optimistic</th><th class="num">Base</th><th class="num">Pessimistic</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ============ LEVERS ============ -->
+  <section class="section wide">
+    <div class="section-head">
+      <div class="kicker">04 — What actually moves the outcome</div>
+      <h2>The gap isn't a market problem — it's a contribution problem</h2>
+      <p>All bars below use <strong>base-case</strong> return assumptions (the middle scenario) — only the SIP amount or step-up rate changes. This isolates the one lever fully in your control.</p>
+    </div>
+    <div class="card">
+      <div class="chart-wrap"><svg id="leversChart" width="1000" height="340" viewBox="0 0 1000 340" role="img" aria-label="Ten year outcome under different SIP amounts and stepup rates, base case returns"></svg></div>
+    </div>
+    <p style="margin-top:var(--space-5);font-size:var(--fs-sm);">To hit exactly ₹25 Cr in 10 years under base-case returns, the required starting SIP is <strong class="num" id="requiredSipInline">—</strong>/month — about 2.6× the current plan. That's the honest price of the goal if markets only deliver the base case.</p>
+  </section>
+
+  <!-- ============ ALLOCATION ============ -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">05 — Next 6 months</div>
+      <h2>Where the ₹2,34,000/month actually goes</h2>
+      <p>Deliberately underweights what's already concentrated (US AI/semis via 13 direct holdings + RSU, India smallcap via 2 existing active funds) and overweights the one area with the best valuation-to-growth combination.</p>
+    </div>
+    <div class="card-grid grid-2">
+      <div class="card">
+        <div class="chart-wrap"><svg id="allocChart" width="440" height="440" viewBox="0 0 440 440" role="img" aria-label="Allocation of new monthly investment across four categories"></svg></div>
+      </div>
+      <div class="card" id="allocList"></div>
+    </div>
+  </section>
+
+  <!-- ============ AFTER 6 MONTHS ============ -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">06 — After the first 6 months</div>
+      <h2>Not a new allocation — a decision framework</h2>
+      <p>There's no fixed reallocation date. Instead, revisit this plan every 6 months against these triggers:</p>
+    </div>
+    <div class="card">
+      <div class="framework-list">
+        <div class="framework-item"><div class="framework-num">01</div><div><h4>Re-run this model with real numbers</h4><p>Swap in the actual portfolio value and current index PE/CAPE levels every 6 months. The scenario bands here are a snapshot of Sep 2026 valuations, not a permanent forecast.</p></div></div>
+        <div class="framework-item"><div class="framework-num">02</div><div><h4>Nifty 50 PE below ~17–18 → tilt more into India large-cap</h4><p>A genuine cheapening of the core holding is the signal to increase that allocation, not a fixed calendar date.</p></div></div>
+        <div class="framework-item"><div class="framework-num">03</div><div><h4>Nifty 50 PE above ~25 → redirect fresh large-cap money to global/EM instead</h4><p>Don't keep buying the same slice at a richer price just because it's the "core" holding.</p></div></div>
+        <div class="framework-item"><div class="framework-num">04</div><div><h4>US CAPE meaningfully mean-reverts (toward 25–30) → that's when to add global exposure</h4><p>At today's CAPE of 41.6, staying underweight global/AI-concentrated exposure is deliberate, not permanent.</p></div></div>
+        <div class="framework-item"><div class="framework-num">05</div><div><h4>12–18 months in, check which scenario you're tracking</h4><p>If actual returns are running closer to the pessimistic path, decide then — increase the SIP, extend the horizon, or accept a lower number — rather than discovering it in year 9.</p></div></div>
+        <div class="framework-item"><div class="framework-num">06</div><div><h4>Trim the RSU concentration over time</h4><p>AB InBev RSU is a single-stock position outside this whole model. Periodically selling and reinvesting into the diversified allocation above reduces a real, uncompensated risk.</p></div></div>
+        <div class="framework-item"><div class="framework-num">07</div><div><h4>Don't add a third overlapping fund</h4><p>Keerthana's two Parag Parikh Flexi Cap folios already share one ISIN. Consolidate existing overlap before adding anything new in the same category.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ASSUMPTIONS ============ -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">07 — Assumptions &amp; methodology</div>
+      <h2>Every rate used, and why</h2>
+    </div>
+    <div class="card">
+      <dl class="assumptions">
+        <dt>Compounding</dt>
+        <dd>All figures use monthly compounding (annual rate ÷ 12) for consistency between the lump-sum buckets and the growing SIP annuity — not mixed annual/monthly conventions.</dd>
+        <dt>FD — 7.5%/yr</dt>
+        <dd>Value-weighted average of the three real, named FDs on file (Shriram Finance 7.6%, HDFC Bank 7.75% and 7.25%) — contracted rates, held constant regardless of scenario.</dd>
+        <dt>EPF — 8.25%/yr</dt>
+        <dd>Current EPFO statutory declared rate. No new monthly EPF contributions are modeled (data gap — salary-linked EPF inflow isn't in the household ledger yet), so this understates the real EPF trajectory somewhat.</dd>
+        <dt>Gold — 8%/yr</dt>
+        <dd>Long-run historical trend rate, not the much higher 2026 spot forecasts (JPMorgan's $6,000/oz end-2026 target implies a much faster near-term move) — a 10-year CAGR assumption shouldn't extrapolate one bull year.</dd>
+        <dt>Existing market-linked corpus (₹2.92 Cr: MF, direct stocks, US stocks, RSU)</dt>
+        <dd>Optimistic 17% / Base 10% / Pessimistic 2% — a wider spread than a diversified portfolio would get, reflecting the real concentration in AI/semiconductor stocks and expensive India small/midcap funds documented in the Research section.</dd>
+        <dt>New SIP (₹2.34L/month, +5% step-up)</dt>
+        <dd>Optimistic 14.3% / Base 9.1% / Pessimistic 3.35% — bottom-up blend of the section-05 allocation: India large-cap (10/15/5%), India quality midcap (10/16/3%), global diversified ex-concentrated-AI (7/12/1%), EM ex-India (8/13/2%), weighted 45/20/20/15.</dd>
+        <dt>Required blended CAGR — 15.5%</dt>
+        <dd>The single uniform rate that would need to apply to <em>everything</em> — including the FD and EPF buckets — to hit ₹25 Cr in exactly 10 years. Shown for reference only; it's not realistic since FD/EPF won't compound at equity-like rates, which is exactly why the bucketed scenario model above tells the truer story.</dd>
+      </dl>
+    </div>
+    <div class="disclaimer">
+      This is a modeling exercise built from your real portfolio data and publicly available research, not licensed financial advice. Every scenario here can be wrong in either direction — markets don't respect valuation bands on any fixed schedule. Fund/category selection within each allocation slot still needs your own due diligence (expense ratio, tracking error, fund manager quality).
+    </div>
+  </section>
+
+  <footer>
+    <div>The ₹25 Cr Plan — built 2 Sep 2026</div>
+    <div>Figures computed live in this page from the constants in §07 — view source to check the math</div>
+  </footer>
+</div>
+
+<script>
+(function() {
+  const GOAL = 250000000;
+  const YEARS = 10, MONTHS = 120;
+  const FD = 2954000, EPF = 5313080, GOLD = 3236413;
+  const MARKET_EXISTING = 40701024 - FD - EPF - GOLD;
+  const FD_RATE = 0.075, EPF_RATE = 0.0825, GOLD_RATE = 0.08;
+  const SIP_START = 234000, STEPUP = 0.05;
+  const SCEN = {
+    optimistic: { existing: 0.17, sip: 0.143, color: 'var(--scen-optimistic)' },
+    base:       { existing: 0.10, sip: 0.091, color: 'var(--scen-base)' },
+    pessimistic:{ existing: 0.02, sip: 0.0335, color: 'var(--scen-pessimistic)' },
+  };
+
+  function fvLump(pv, rate, months) { return pv * Math.pow(1 + rate/12, months); }
+  function fvSip(start, rate, stepup, months) {
+    const r = rate/12; let fv = 0, cur = start;
+    for (let m=1; m<=months; m++) { fv += cur * Math.pow(1+r, months-m); if (m%12===0) cur *= (1+stepup); }
+    return fv;
+  }
+  function totalForScenario(rates, months) {
+    return fvLump(FD, FD_RATE, months) + fvLump(EPF, EPF_RATE, months) + fvLump(GOLD, GOLD_RATE, months)
+         + fvLump(MARKET_EXISTING, rates.existing, months) + fvSip(SIP_START, rates.sip, STEPUP, months);
+  }
+  function yearSeries(rates) {
+    const rows = [];
+    let sipMonthly = SIP_START, fd=FD, epf=EPF, gold=GOLD, mkt=MARKET_EXISTING, sipCorpus=0;
+    const rFD=FD_RATE/12, rEPF=EPF_RATE/12, rGold=GOLD_RATE/12, rEx=rates.existing/12, rSip=rates.sip/12;
+    for (let m=1; m<=MONTHS; m++) {
+      fd*=(1+rFD); epf*=(1+rEPF); gold*=(1+rGold); mkt*=(1+rEx);
+      sipCorpus = sipCorpus*(1+rSip) + sipMonthly;
+      if (m%12===0) { sipMonthly *= (1+STEPUP); rows.push(fd+epf+gold+mkt+sipCorpus); }
+    }
+    return rows; // 10 values, year 1..10
+  }
+  function monthsToGoal(rates) {
+    let m = MONTHS;
+    while (totalForScenario(rates, m) < GOAL && m < 40*12) m++;
+    return m;
+  }
+  function crore(n) { return (n/10000000); }
+  function fmtCr(n) { return '₹' + crore(n).toFixed(2) + ' Cr'; }
+  function fmtL(n) { return '₹' + (n/100000).toFixed(1) + ' L'; }
+
+  const series = {};
+  const finals = {};
+  const monthsTo = {};
+  for (const [name, rates] of Object.entries(SCEN)) {
+    series[name] = yearSeries(rates);
+    finals[name] = series[name][9];
+    monthsTo[name] = monthsToGoal(rates);
+  }
+
+  // ---- verdict line ----
+  document.getElementById('verdictLine').innerHTML =
+    `Under <strong>optimistic</strong> market conditions this plan just about reaches the goal — <strong>${fmtCr(finals.optimistic)}</strong> in 10 years, and ₹25 Cr arrives around year ${(monthsTo.optimistic/12).toFixed(1)}. Under the <strong>realistic base case</strong>, expect <strong>${fmtCr(finals.base)}</strong> by year 10 — the full goal takes closer to <strong>${(monthsTo.base/12).toFixed(1)} years</strong> at this contribution rate. The pessimistic path stretches that to <strong>~${(monthsTo.pessimistic/12).toFixed(0)} years</strong>.`;
+
+  // ---- scenario stat cards ----
+  document.getElementById('statOptTotal').textContent = fmtCr(finals.optimistic);
+  document.getElementById('statOptSub').textContent = `Goal reached ~year ${(monthsTo.optimistic/12).toFixed(1)}`;
+  document.getElementById('statBaseTotal').textContent = fmtCr(finals.base);
+  document.getElementById('statBaseSub').textContent = `${((finals.base/GOAL)*100).toFixed(0)}% of goal — full goal ~year ${(monthsTo.base/12).toFixed(1)}`;
+  document.getElementById('statPessTotal').textContent = fmtCr(finals.pessimistic);
+  document.getElementById('statPessSub').textContent = `${((finals.pessimistic/GOAL)*100).toFixed(0)}% of goal — full goal ~year ${(monthsTo.pessimistic/12).toFixed(1)}`;
+
+  // ---- year table ----
+  const tbody = document.querySelector('#yearTable tbody');
+  for (let y=0; y<10; y++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Year ${y+1}</td><td class="num">${fmtCr(series.optimistic[y])}</td><td class="num">${fmtCr(series.base[y])}</td><td class="num">${fmtCr(series.pessimistic[y])}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  // ---- scenario line chart ----
+  (function drawScenarioChart() {
+    const svg = document.getElementById('scenarioChart');
+    const W = 1000, H = 420, PL = 56, PR = 30, PT = 24, PB = 40;
+    const plotW = W - PL - PR, plotH = H - PT - PB;
+    const maxVal = Math.max(GOAL, finals.optimistic) * 1.05;
+    const x = (year) => PL + (year/10) * plotW;
+    const y = (val) => PT + plotH - (val/maxVal) * plotH;
+
+    let svgContent = '';
+    // gridlines (horizontal, every 5 Cr)
+    for (let g=0; g<=Math.ceil(maxVal/50000000); g++) {
+      const v = g*50000000;
+      if (v > maxVal) break;
+      svgContent += `<line x1="${PL}" y1="${y(v)}" x2="${W-PR}" y2="${y(v)}" stroke="var(--chart-grid)" stroke-width="1" />`;
+      svgContent += `<text x="${PL-10}" y="${y(v)+4}" text-anchor="end" class="chart-axis-label">${(v/10000000).toFixed(0)}</text>`;
+    }
+    // x axis labels
+    for (let yr=0; yr<=10; yr+=2) {
+      svgContent += `<text x="${x(yr)}" y="${H-PB+20}" text-anchor="middle" class="chart-axis-label">${yr===0?'Now':'Y'+yr}</text>`;
+    }
+    // goal line
+    svgContent += `<line x1="${PL}" y1="${y(GOAL)}" x2="${W-PR}" y2="${y(GOAL)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6,5" />`;
+    svgContent += `<text x="${W-PR}" y="${y(GOAL)-8}" text-anchor="end" class="chart-value-label" fill="var(--accent)">Goal — ₹25 Cr</text>`;
+
+    for (const [name, rates] of Object.entries(SCEN)) {
+      const pts = [[0, crore(40701024)*10000000]].concat(series[name].map((v,i)=>[i+1, v]));
+      const d = pts.map((p,i) => `${i===0?'M':'L'} ${x(p[0]).toFixed(1)} ${y(p[1]).toFixed(1)}`).join(' ');
+      svgContent += `<path d="${d}" fill="none" stroke="${rates.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />`;
+      const last = pts[pts.length-1];
+      svgContent += `<circle cx="${x(last[0])}" cy="${y(last[1])}" r="4.5" fill="${rates.color}" stroke="var(--chart-surface)" stroke-width="2" />`;
+      svgContent += `<text x="${x(last[0])-8}" y="${y(last[1])-10}" text-anchor="end" class="chart-value-label" fill="${rates.color}">${crore(last[1]).toFixed(1)} Cr</text>`;
+    }
+    svg.innerHTML = svgContent;
+
+    const legend = document.getElementById('scenarioLegend');
+    const labels = { optimistic: 'Optimistic', base: 'Base case', pessimistic: 'Pessimistic' };
+    legend.innerHTML = Object.entries(SCEN).map(([name, rates]) =>
+      `<div class="legend-item"><span class="legend-swatch line" style="background:${rates.color}"></span>${labels[name]} (existing ${(rates.existing*100).toFixed(0)}% · new SIP ${(rates.sip*100).toFixed(1)}%)</div>`
+    ).join('') + `<div class="legend-item"><span class="legend-swatch line" style="background:var(--accent);opacity:0.7"></span>Goal (₹25 Cr)</div>`;
+  })();
+
+  // ---- levers chart ----
+  (function drawLeversChart() {
+    const svg = document.getElementById('leversChart');
+    const W = 1000, H = 340, PL = 70, PR = 30, PT = 20, PB = 70;
+    const plotW = W - PL - PR, plotH = H - PT - PB;
+
+    function fvLever(sip, stepup) {
+      const rates = SCEN.base;
+      return fvLump(FD, FD_RATE, MONTHS) + fvLump(EPF, EPF_RATE, MONTHS) + fvLump(GOLD, GOLD_RATE, MONTHS)
+           + fvLump(MARKET_EXISTING, rates.existing, MONTHS) + fvSip(sip, rates.sip, stepup, MONTHS);
+    }
+    // required SIP for exact goal at base case
+    let lo=0, hi=10000000;
+    for (let i=0;i<100;i++){ const mid=(lo+hi)/2; if (fvLever(mid,0.05)<GOAL) lo=mid; else hi=mid; }
+    const requiredSip = (lo+hi)/2;
+    document.getElementById('requiredSipInline').textContent = fmtL(requiredSip);
+
+    const bars = [
+      { label: 'Current plan\n₹2.34L @5%', value: fvLever(234000, 0.05), current: true },
+      { label: '₹3.0L @5%', value: fvLever(300000, 0.05) },
+      { label: '₹3.5L @5%', value: fvLever(350000, 0.05) },
+      { label: '₹4.0L @5%', value: fvLever(400000, 0.05) },
+      { label: '₹2.34L @10%\nstep-up', value: fvLever(234000, 0.10) },
+      { label: '₹2.34L @15%\nstep-up', value: fvLever(234000, 0.15) },
+      { label: 'Required\n₹6.2L @5%', value: fvLever(requiredSip, 0.05), required: true },
+    ];
+    const maxVal = GOAL * 1.08;
+    const y = (v) => PT + plotH - (v/maxVal)*plotH;
+    const bw = plotW / bars.length * 0.6;
+    const gap = plotW / bars.length;
+
+    let content = '';
+    content += `<line x1="${PL}" y1="${y(GOAL)}" x2="${W-PR}" y2="${y(GOAL)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6,5" />`;
+    content += `<text x="${W-PR}" y="${y(GOAL)-8}" text-anchor="end" class="chart-value-label" fill="var(--accent)">Goal — ₹25 Cr</text>`;
+    bars.forEach((b, i) => {
+      const cx = PL + gap*i + gap/2;
+      const barX = cx - bw/2;
+      const barY = y(b.value);
+      const barH = (PT+plotH) - barY;
+      const color = b.required ? 'var(--scen-optimistic)' : (b.current ? 'var(--scen-base)' : 'var(--chart-axis)');
+      content += `<rect x="${barX}" y="${barY}" width="${bw}" height="${barH}" rx="4" fill="${color}" opacity="${b.current||b.required?1:0.55}" />`;
+      content += `<text x="${cx}" y="${barY-8}" text-anchor="middle" class="chart-value-label">${crore(b.value).toFixed(1)}</text>`;
+      const lines = b.label.split('\n');
+      lines.forEach((line, li) => {
+        content += `<text x="${cx}" y="${PT+plotH+20+li*14}" text-anchor="middle" class="chart-axis-label">${line}</text>`;
+      });
+    });
+    svg.innerHTML = content;
+  })();
+
+  // ---- allocation donut ----
+  (function drawAllocation() {
+    const cats = [
+      { name: 'India Large-cap / Flexicap', pct: 45, amt: 105300, color: 'var(--alloc-india-large)', note: 'Core holding — Nifty fairly valued, best growth-to-valuation combination' },
+      { name: 'India quality Midcap / Multicap', pct: 20, amt: 46800, color: 'var(--alloc-india-mid)', note: 'Disciplined satellite — not a smallcap chase, you’re already overweight there' },
+      { name: 'Global diversified equity', pct: 20, amt: 46800, color: 'var(--alloc-global)', note: 'Ex-concentrated-AI — real geographic diversification you currently lack' },
+      { name: 'EM ex-India', pct: 15, amt: 35100, color: 'var(--alloc-em)', note: 'Valuation-optionality satellite, stronger near-term EPS growth' },
+    ];
+    const svg = document.getElementById('allocChart');
+    const cx = 220, cy = 210, r = 150, rInner = 92;
+    let angle = -90;
+    let content = '';
+    cats.forEach(c => {
+      const sweep = (c.pct/100) * 360;
+      const a0 = angle * Math.PI/180, a1 = (angle+sweep) * Math.PI/180;
+      const x0 = cx + r*Math.cos(a0), y0v = cy + r*Math.sin(a0);
+      const x1 = cx + r*Math.cos(a1), y1v = cy + r*Math.sin(a1);
+      const xi0 = cx + rInner*Math.cos(a1), yi0 = cy + rInner*Math.sin(a1);
+      const xi1 = cx + rInner*Math.cos(a0), yi1 = cy + rInner*Math.sin(a0);
+      const large = sweep > 180 ? 1 : 0;
+      const d = `M ${x0} ${y0v} A ${r} ${r} 0 ${large} 1 ${x1} ${y1v} L ${xi0} ${yi0} A ${rInner} ${rInner} 0 ${large} 0 ${xi1} ${yi1} Z`;
+      content += `<path d="${d}" fill="${c.color}" stroke="var(--chart-surface)" stroke-width="2" />`;
+      const midA = (angle + sweep/2) * Math.PI/180;
+      const lx = cx + (r+rInner)/2 * Math.cos(midA), ly = cy + (r+rInner)/2 * Math.sin(midA);
+      content += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" class="chart-value-label" fill="#ffffff">${c.pct}%</text>`;
+      angle += sweep;
+    });
+    content += `<text x="${cx}" y="${cy-6}" text-anchor="middle" class="chart-value-label" font-size="15">₹2.34L</text>`;
+    content += `<text x="${cx}" y="${cy+14}" text-anchor="middle" class="chart-axis-label">per month</text>`;
+    svg.innerHTML = content;
+
+    const list = document.getElementById('allocList');
+    list.innerHTML = cats.map(c => `
+      <div class="alloc-row">
+        <span class="alloc-swatch" style="background:${c.color}"></span>
+        <div style="flex:1;">
+          <div class="alloc-name">${c.name}</div>
+          <div class="alloc-note">${c.note}</div>
+        </div>
+        <div class="alloc-pct">${c.pct}%</div>
+        <div class="alloc-amt">${fmtL(c.amt)}/mo</div>
+      </div>`).join('');
+  })();
+})();
+</script>
+</body>
+</html>
