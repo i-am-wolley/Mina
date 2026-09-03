@@ -272,6 +272,12 @@
   .hero-toggle-note { font-size: var(--fs-micro); color: var(--text-tertiary); margin-top: var(--space-2); line-height: 1.5; }
 
   .portfolio-hero-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); margin-bottom: var(--space-8); }
+  .class-alloc-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .class-alloc-label { width: 130px; flex-shrink: 0; font-size: 12.5px; color: var(--text-secondary); }
+  .class-alloc-track { flex: 1; height: 10px; border-radius: var(--radius-pill); background: var(--surface-sunken); overflow: hidden; }
+  .class-alloc-fill { height: 100%; border-radius: var(--radius-pill); }
+  .class-alloc-value { width: 170px; text-align: right; font-size: 12px; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-secondary); }
+  .class-alloc-value b { color: var(--text-primary); }
   .goal-hero-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-6); margin-bottom: var(--space-8); }
   .hero-card-label { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--text-tertiary); margin-bottom: var(--space-2); }
   .hero-card-value { font-family: var(--font-mono); font-size: 28px; font-weight: var(--fw-bold); letter-spacing: var(--ls-display); line-height: 1.1; }
@@ -608,6 +614,24 @@ function groupByL1(positionList) {
   return { groups: sorted, total };
 }
 
+// Groups by the same MF / Indian Equity / Foreign Equity / EPF / Fixed Income / Real Assets
+// buckets the class-button row uses, instead of groupByL1's coarser 'Equity' lump (which merges
+// mutual funds, Indian stocks, and foreign stocks/RSU into one L1 category) — used wherever the
+// table's grouped view needs the same class split the filter buttons already offer.
+function groupByClassBucket(positionList) {
+  const total = positionList.reduce((s, p) => s + p.current_value, 0);
+  const groups = new Map();
+  positionList.forEach(p => {
+    const key = classLabel(classOf(p));
+    if (!groups.has(key)) groups.set(key, { key, value: 0, positions: [] });
+    const g = groups.get(key);
+    g.value += p.current_value; g.positions.push(p);
+  });
+  const sorted = [...groups.values()].sort((a, b) => b.value - a.value);
+  sorted.forEach((g, i) => { g.color = LENS_PALETTE[i % LENS_PALETTE.length]; g.weight = total ? g.value / total : 0; });
+  return { groups: sorted, total };
+}
+
 const CLASS_BUCKETS = [
   { id: 'all', label: 'All' },
   { id: 'mf', label: 'Mutual Funds', l3s: ['Index fund', 'Active MF', 'Liquid fund'] },
@@ -699,18 +723,77 @@ function AgendaList() {
   `;
 }
 
-function NeedsYou() {
-  const items = [];
-  if (reviewQueue.pending_transactions > 0) items.push(`${reviewQueue.pending_transactions} extracted transactions awaiting review`);
-  if (reviewQueue.pending_documents_uploaded > 0) items.push(`${reviewQueue.pending_documents_uploaded} documents uploaded, not yet processed — no extraction pipeline built yet`);
-  reviewQueue.coverage_gaps.forEach(g => items.push(`${g.institution} — ${g.note}`));
-  if (!items.length) return null;
+// Real, computed action items from the current portfolio — no invented advice, no buy/sell
+// recommendations (AI boundaries). "Immediate" = something with a real decision or backlog
+// attached right now (an open high-severity flag, an unprocessed review-queue item). "Future" =
+// worth watching or planning for, but nothing forces a decision today (concentration, an FD
+// maturing years out, which of 3 loans has the smallest invest-vs-prepay spread, data gaps).
+function portfolioActionItems() {
+  const immediate = [], future = [];
+
+  flags.filter(f => ['Critical', 'High'].includes(f.severity)).forEach(f => {
+    const inst = instruments[positions.find(p => p.id === f.affected_positions[0])?.instrument_id];
+    immediate.push({ icon: 'flag', severity: f.severity, title: `${inst?.name.split(' ').slice(0, 3).join(' ')} · ${f.category.toLowerCase()}`, sub: f.signal, trailing: formatINR(f.exposure_amount), key: `flag-${f.code}` });
+  });
+  if (reviewQueue.pending_transactions > 0) immediate.push({ icon: 'inbox', title: `${reviewQueue.pending_transactions} extracted transactions awaiting review`, sub: 'Review queue', key: 'rq-txn' });
+  if (reviewQueue.pending_documents_uploaded > 0) immediate.push({ icon: 'inbox', title: `${reviewQueue.pending_documents_uploaded} uploaded documents not yet processed`, sub: 'No extraction pipeline built yet — sitting in the manual review queue', key: 'rq-docs' });
+
+  concentrationFlagsForClass(ALL_PRICED, householdTotals.current_total).slice(0, 2).forEach(c => {
+    future.push({ icon: 'flag', title: `${c.name.split(' ').slice(0, 4).join(' ')} is ${(c.w * 100).toFixed(1)}% of net worth`, sub: 'Concentration worth keeping an eye on, not a call to trim', key: `conc-${c.id}` });
+  });
+
+  const ladder = maturityLadderData(ALL_PRICED);
+  if (ladder.length) {
+    const next = ladder[0];
+    future.push({ icon: 'calendar', title: `${next.name} matures ${new Date(next.matures + 'T00:00:00').toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`, sub: `Worth planning the reinvestment decision ahead of time · ${(next.rate * 100).toFixed(2)}% now`, trailing: formatINR(next.value), key: 'fd-maturity' });
+  }
+
+  if (liabilities.length) {
+    const sipBase = GOAL_PLAN.scenarios.base.sip;
+    const closest = [...liabilities].sort((a, b) => Math.abs(sipBase - a.rate) - Math.abs(sipBase - b.rate))[0];
+    const spread = sipBase - closest.rate;
+    future.push({ icon: 'wallet', title: `Loan •••••${closest.account_last4} (${(closest.rate * 100).toFixed(2)}%) is the closest call of the 3`, sub: spread >= 0 ? 'Base-case new-SIP returns still favor investing here, but by the smallest margin' : 'Base-case new-SIP returns favor prepaying this one — see Debt & Immovable Assets', trailing: formatINR(closest.principal_outstanding), key: 'debt-closest' });
+  }
+
+  const mfPositions = ALL_PRICED.filter(p => classOf(p) === 'mf');
+  if (mfPositions.length) {
+    const bullets = mfRebalancingBullets(mfPositions, mfCompositionData(mfPositions));
+    if (bullets.length) future.push({ icon: 'bulb', title: 'Mutual fund rebalancing note', sub: bullets[0].replace(/<\/?b>/g, ''), key: 'mf-rebal' });
+  }
+
+  reviewQueue.coverage_gaps.forEach((g, i) => future.push({ icon: 'inbox', title: g.institution, sub: g.note, key: `gap-${i}` }));
+
+  return { immediate: immediate.slice(0, 3), future: future.slice(0, 4) };
+}
+
+function PortfolioActions() {
+  const { immediate, future } = useMemo(() => portfolioActionItems(), []);
   return html`
-    <div>
-      <div class="section-label">Needs you</div>
-      <${Card}>
-        ${items.map((t, i) => html`<div class="card-row" style=${i > 0 ? { marginTop: 'var(--space-4)' } : {}}><span class="card-icon"><${Icon} name="inbox" size=${17} /></span><span class="card-body">${t}</span></div>`)}
-      <//>
+    <div style="display:flex;flex-direction:column;gap:var(--space-6);">
+      <div>
+        <div class="section-label">Immediate actions</div>
+        <${Card}>
+          ${immediate.length ? immediate.map((c, i) => html`
+            <div class="card-row" style=${i > 0 ? { marginTop: 'var(--space-4)' } : {}} key=${c.key}>
+              <span class="card-icon ${c.severity ? `tone-${SEVERITY_TONE[c.severity]}` : ''}"><${Icon} name=${c.icon} size=${17} /></span>
+              <div class="card-body"><div class="card-title">${c.severity ? html`<${SeverityBadge} severity=${c.severity} />` : ''} ${c.title}</div><div class="card-sub">${c.sub}</div></div>
+              ${c.trailing ? html`<div class="card-trailing tabular">${c.trailing}</div>` : ''}
+            </div>
+          `) : html`<div class="card-sub">Nothing needs immediate attention right now.</div>`}
+        <//>
+      </div>
+      <div>
+        <div class="section-label">Future actions</div>
+        <${Card}>
+          ${future.length ? future.map((c, i) => html`
+            <div class="card-row" style=${i > 0 ? { marginTop: 'var(--space-4)' } : {}} key=${c.key}>
+              <span class="card-icon"><${Icon} name=${c.icon} size=${17} /></span>
+              <div class="card-body"><div class="card-title">${c.title}</div><div class="card-sub">${c.sub}</div></div>
+              ${c.trailing ? html`<div class="card-trailing tabular">${c.trailing}</div>` : ''}
+            </div>
+          `) : html`<div class="card-sub">Nothing on the horizon right now.</div>`}
+        <//>
+      </div>
     </div>
   `;
 }
@@ -770,7 +853,7 @@ function TodayScreen({ onNavigate }) {
       </div>
       <div class="side-panel">
         <div><div class="section-label">Next 7 days</div><${Card}><${AgendaList} /><//></div>
-        <${NeedsYou} />
+        <${PortfolioActions} />
       </div>
     </div>
   `;
@@ -1159,6 +1242,29 @@ function ClassCompareBars({ items }) {
     </div>
   `;
 }
+// ---- Portfolio: value + % of total by class, honoring the current member filter ----
+function classAllocationData(memberId) {
+  const filtered = memberId === 'all' ? ALL_PRICED : ALL_PRICED.filter(p => accounts[p.account_id]?.member_id === memberId);
+  const total = filtered.reduce((s, p) => s + p.current_value, 0);
+  return CLASS_BUCKETS.filter(c => c.id !== 'all').map((c, i) => {
+    const value = filtered.filter(p => classOf(p) === c.id).reduce((s, p) => s + p.current_value, 0);
+    return { id: c.id, label: c.label, value, weight: total ? value / total : 0, color: LENS_PALETTE[i % LENS_PALETTE.length] };
+  }).filter(c => c.value > 0).sort((a, b) => b.value - a.value);
+}
+function ClassAllocationBars({ items }) {
+  const maxV = Math.max(...items.map(i => i.value), 1);
+  return html`
+    <div>
+      ${items.map(i => html`
+        <div class="class-alloc-row" key=${i.id}>
+          <div class="class-alloc-label">${i.label}</div>
+          <div class="class-alloc-track"><div class="class-alloc-fill" style=${{ width: `${i.value / maxV * 100}%`, background: `var(--${i.color}-500)` }} /></div>
+          <div class="class-alloc-value tabular"><b>${formatINR(i.value)}</b> · ${(i.weight * 100).toFixed(1)}%</div>
+        </div>
+      `)}
+    </div>
+  `;
+}
 function insightGoldDiversification() {
   const p = positions.find(x => x.instrument_id === 'inst_hdfc_gold_etf');
   if (!p) return null;
@@ -1319,7 +1425,7 @@ function ScopeHeroCard({ scope }) {
 }
 
 function HoldingsTable({ classId, filtered, total, sortKey, sortDir, onSort, selectedId, onSelectRow }) {
-  const groups = classId === 'all' ? groupByL1(filtered).groups.map(g => ({ key: g.key, value: g.value, weight: g.weight, positions: g.positions })) : [{ key: classLabel(classId), value: total, weight: 1, positions: filtered }];
+  const groups = classId === 'all' ? groupByClassBucket(filtered).groups.map(g => ({ key: g.key, value: g.value, weight: g.weight, positions: g.positions })) : [{ key: classLabel(classId), value: total, weight: 1, positions: filtered }];
   return html`
     <div class="table-wrap">
       <table class="holdings-table">
@@ -1608,11 +1714,18 @@ function PortfolioScreen({ onNavigate }) {
   function selectRow(id) { setSelectedId(prev => prev === id ? null : id); }
   function onSort(key) { if (key === sortKey) setSortDir(d => d === 'desc' ? 'asc' : 'desc'); else { setSortKey(key); setSortDir('desc'); } }
 
+  const allocItems = useMemo(() => classAllocationData(memberId), [memberId]);
+
   return html`
     <div>
       <div class="portfolio-hero-row">
         <${PortfolioHeroCard} />
         <${ScopeHeroCard} scope=${scope} />
+      </div>
+
+      <div style="margin-bottom:var(--space-8)">
+        <div class="section-label">By asset class${memberId !== 'all' ? ` · ${members[memberId].name}` : ''}</div>
+        <${Card}><${ClassAllocationBars} items=${allocItems} /><//>
       </div>
 
       <div class="class-btn-row">
@@ -1984,6 +2097,31 @@ function gpYearSeries(rates) {
   }
   return rows;
 }
+// Same year-by-year walk as gpYearSeries, but also tracks cumulative principal actually put in
+// (today's starting corpus + every SIP/EPF/May-lumpsum contribution to date) so the YoY bars can
+// split each year's total into "invested" vs "growth" — growth is just value minus principal,
+// never a separately-modeled number, so it can't drift from the real total the same series produces.
+function gpYearSeriesWithPrincipal(rates) {
+  const P = GOAL_PLAN;
+  const rows = [{ year: 2026, value: householdTotals.current_total, invested: householdTotals.current_total, growth: 0 }];
+  let sipMonthly = P.sipStart, fd = P.fd, epfE = P.epfExisting, epfC = 0, gold = P.gold, mkt = P.marketExisting, sipCorpus = 0, mayCorpus = 0;
+  let principal = householdTotals.current_total;
+  const rFD = P.fdRate / 12, rEPF = P.epfRate / 12, rGold = P.goldRate / 12, rEx = rates.existing / 12, rSip = rates.sip / 12;
+  for (let m = 1; m <= P.months; m++) {
+    fd *= (1 + rFD); epfE *= (1 + rEPF); gold *= (1 + rGold); mkt *= (1 + rEx);
+    epfC = epfC * (1 + rEPF) + P.epfMonthlyContrib;
+    sipCorpus = sipCorpus * (1 + rSip) + sipMonthly;
+    const mayThisMonth = P.mayMonths.includes(m) ? P.mayLumpsum : 0;
+    mayCorpus = mayCorpus * (1 + rSip) + mayThisMonth;
+    principal += P.epfMonthlyContrib + sipMonthly + mayThisMonth;
+    if (m % 12 === 0) {
+      const value = fd + epfE + epfC + gold + mkt + sipCorpus + mayCorpus;
+      sipMonthly *= (1 + P.stepup);
+      rows.push({ year: 2026 + m / 12, value, invested: principal, growth: Math.max(0, value - principal) });
+    }
+  }
+  return rows;
+}
 function gpMonthsToGoal(rates) {
   let m = 1;
   while (gpTotal(rates, m) < GOAL_PLAN.goal && m < 40 * 12) m++;
@@ -2055,7 +2193,45 @@ const FD_ALTERNATIVE = {
   cessRate: 0.04,
 };
 
+// Year-over-year stacked bars: bottom segment is real cumulative principal (today's starting
+// corpus + every contribution made by that point), top segment is growth (value minus principal)
+// — replaces the earlier all-3-scenarios line chart with a single-scenario, "where did this year's
+// number actually come from" view. Compact currency labels reuse the same formatINR the rest of
+// the app uses, so a crowded 11-bar chart stays legible.
+function GoalGrowthBars({ rows, height = 260 }) {
+  const w = 720, pad = 10, padBottom = 22, padTop = 24;
+  const maxVal = Math.max(...rows.map(r => r.value), 1);
+  const bandW = (w - pad * 2) / rows.length;
+  const barW = Math.min(bandW * 0.62, 48);
+  function y(val) { return padTop + (1 - val / maxVal) * (height - padTop - padBottom); }
+  const baseline = height - padBottom;
+  return html`
+    <svg viewBox="0 0 ${w} ${height}" width="100%" height=${height} preserveAspectRatio="none">
+      <line x1=${pad} y1=${baseline} x2=${w - pad} y2=${baseline} stroke="var(--border-hairline)" />
+      ${rows.map((r, i) => {
+        const cx = pad + bandW * i + bandW / 2;
+        const x0 = cx - barW / 2;
+        const yInvestedTop = y(r.invested);
+        const yTotalTop = y(r.value);
+        const investedH = Math.max(0, baseline - yInvestedTop);
+        const growthH = Math.max(0, yInvestedTop - yTotalTop);
+        return html`
+          <g key=${r.year}>
+            <rect x=${x0} y=${yInvestedTop} width=${barW} height=${investedH} fill="var(--bronze-500)" rx="2" />
+            ${growthH > 0.5 ? html`<rect x=${x0} y=${yTotalTop} width=${barW} height=${growthH} fill="var(--sage-500)" rx="2" />` : ''}
+            <text x=${cx} y=${yTotalTop - 6} font-size="9" fill="var(--text-secondary)" text-anchor="middle" class="tabular">${formatINR(r.value)}</text>
+            ${growthH > 15 ? html`<text x=${cx} y=${(yTotalTop + yInvestedTop) / 2 + 3} font-size="8" fill="#fff" text-anchor="middle" class="tabular">${formatINR(r.growth)}</text>` : ''}
+            ${investedH > 15 ? html`<text x=${cx} y=${(yInvestedTop + baseline) / 2 + 3} font-size="8" fill="#fff" text-anchor="middle" class="tabular">${formatINR(r.invested)}</text>` : ''}
+            <text x=${cx} y=${height - 5} font-size="9" fill="var(--text-tertiary)" text-anchor="middle">${r.year === 2026 ? 'Today' : r.year}</text>
+          </g>
+        `;
+      })}
+    </svg>
+  `;
+}
+
 function GoalPlanScreen() {
+  const [barScenario, setBarScenario] = useState('base');
   const model = useMemo(() => {
     const finals = {}, monthsTo = {}, series = {};
     for (const [name, rates] of Object.entries(GOAL_PLAN.scenarios)) {
@@ -2069,8 +2245,7 @@ function GoalPlanScreen() {
     return { finals, monthsTo, series, requiredSip: (lo + hi) / 2 };
   }, []);
 
-  const seriesColor = { optimistic: 'var(--sage-500)', base: 'var(--accent)', pessimistic: 'var(--danger-500)' };
-  const seriesList = Object.keys(GOAL_PLAN.scenarios).map(name => ({ key: name, color: seriesColor[name], points: model.series[name], width: name === 'base' ? 3 : 2.2 }));
+  const barRows = useMemo(() => gpYearSeriesWithPrincipal(GOAL_PLAN.scenarios[barScenario]), [barScenario]);
 
   return html`
     <div>
@@ -2099,14 +2274,19 @@ function GoalPlanScreen() {
 
       <div class="insights-col">
         <div class="span-2">
-          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />10-year scenario projection</div>
+          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Year-over-year — invested vs. growth</div>
           <${Card}>
-            <${YearChart} seriesList=${seriesList} height=${220} />
-            <div class="trend-legend">
+            <div class="class-btn-row" style="margin-bottom:var(--space-5);">
               ${Object.entries(GOAL_PLAN.scenarios).map(([name, rates]) => html`
-                <span class="trend-legend-item" key=${name}><span class="trend-legend-swatch" style="background:${seriesColor[name]}"></span>${rates.label} (existing ${(rates.existing * 100).toFixed(0)}% · SIP ${(rates.sip * 100).toFixed(1)}%)</span>
+                <button key=${name} class="class-btn ${barScenario === name ? 'active' : ''}" onClick=${() => setBarScenario(name)}>${rates.label}</button>
               `)}
             </div>
+            <${GoalGrowthBars} rows=${barRows} height=${240} />
+            <div class="trend-legend">
+              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--bronze-500)"></span>Invested — starting corpus + every SIP/EPF/May-lumpsum contribution to date</span>
+              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--sage-500)"></span>Growth — that year's value minus what was actually put in</span>
+            </div>
+            <div class="trend-note" style="margin-top:var(--space-3);">${GOAL_PLAN.scenarios[barScenario].label} case: existing corpus at ${(GOAL_PLAN.scenarios[barScenario].existing * 100).toFixed(0)}%, new money at ${(GOAL_PLAN.scenarios[barScenario].sip * 100).toFixed(1)}%. Bar totals match the ${barScenario} line in the scenario comparison below — this view just splits each year's number into what you put in vs. what it grew by.</div>
             <div class="trend-stats-row" style="margin-top:var(--space-5);">
               ${Object.entries(GOAL_PLAN.scenarios).map(([name, rates]) => html`
                 <div key=${name}>
