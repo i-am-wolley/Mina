@@ -621,7 +621,7 @@ function groupByL1(positionList) {
   return { groups: sorted, total };
 }
 
-// Groups by the same MF / Indian Equity / Foreign Equity / EPF / Fixed Income / Real Assets
+// Groups by the same MF / Indian Equity / Foreign Equity / EPF / Fixed Income / Gold
 // buckets the class-button row uses, instead of groupByL1's coarser 'Equity' lump (which merges
 // mutual funds, Indian stocks, and foreign stocks/RSU into one L1 category) — used wherever the
 // table's grouped view needs the same class split the filter buttons already offer.
@@ -646,7 +646,7 @@ const CLASS_BUCKETS = [
   { id: 'foreign_equity', label: 'Foreign Equity', l3s: ['Foreign stock', 'ESOP/RSU/SAR'] },
   { id: 'epf', label: 'EPF', l3s: ['EPF'] },
   { id: 'fixed_income', label: 'Fixed Income', l3s: ['FD'] },
-  { id: 'real_assets', label: 'Real Assets', l3s: ['Gold ETF'] },
+  { id: 'real_assets', label: 'Gold', l3s: ['Gold ETF'] },
 ];
 function classOf(p) {
   const l3 = instruments[p.instrument_id]?.l3;
@@ -877,6 +877,7 @@ const TABLE_COLUMNS = [
   { key: 'name', label: 'Holding' },
   { key: 'units', label: 'Units', num: true },
   { key: 'nav', label: 'NAV', num: true },
+  { key: 'avgCost', label: 'Avg Cost', num: true },
   { key: 'value', label: 'Value', num: true },
   { key: 'gain', label: 'Gain %', num: true },
   { key: 'weight', label: 'Weight', num: true },
@@ -887,6 +888,7 @@ function sortValue(p, key, total) {
     case 'name': return inst?.name || '';
     case 'units': return p.units ?? -1;
     case 'nav': return p.nav ?? -1;
+    case 'avgCost': { const c = avgCostOf(p); return c == null ? -1 : c; }
     case 'value': return p.current_value ?? 0;
     case 'gain': { const g = gainPctOf(p); return g == null ? -Infinity : g; }
     case 'weight': return total ? p.current_value / total : 0;
@@ -896,6 +898,15 @@ function sortValue(p, key, total) {
 function gainPctOf(p) {
   const cb = p.cost_basis != null ? p.cost_basis : (p.cost_basis_usd != null ? p.cost_basis_usd * PRICE_ASOF.usd_inr : null);
   return cb ? (p.current_value - cb) / cb : null;
+}
+// Average cost per unit, in the same native currency as `nav` (INR for most rows, USD for
+// Keerthana's DriveWealth holdings where nav is price_usd) — deliberately real cost_basis only,
+// never impliedCostBasis()'s RSU fallback, so a row with no real per-unit cost on file shows "—"
+// rather than a fabricated number (AI boundaries: no UI number without a real code path behind it).
+function avgCostOf(p) {
+  if (p.units == null) return null;
+  const cb = p.cost_basis != null ? p.cost_basis : (p.cost_basis_usd != null ? p.cost_basis_usd : null);
+  return cb != null ? cb / p.units : null;
 }
 function pctOrDash(v, digits = 1) { return v == null ? '—' : formatPct(v, digits); }
 
@@ -1445,16 +1456,18 @@ function HoldingsTable({ classId, filtered, total, sortKey, sortDir, onSort, sel
               return sortDir === 'desc' ? -cmp : cmp;
             });
             const rows = [
-              classId === 'all' ? html`<tr class="group-row" key=${g.key + '-hdr'}><td colspan="2">${g.key}</td><td class="num"></td><td class="num tabular">${formatINR(g.value)}</td><td class="num"></td><td class="num tabular">${(g.weight * 100).toFixed(1)}%</td></tr>` : null,
+              classId === 'all' ? html`<tr class="group-row" key=${g.key + '-hdr'}><td colspan="2">${g.key}</td><td class="num"></td><td class="num"></td><td class="num tabular">${formatINR(g.value)}</td><td class="num"></td><td class="num tabular">${(g.weight * 100).toFixed(1)}%</td></tr>` : null,
               ...sorted.map(p => {
                 const inst = instruments[p.instrument_id];
                 const gp = gainPctOf(p);
+                const avgCost = avgCostOf(p);
                 const weight = total ? p.current_value / total : 0;
                 return html`
                   <tr key=${p.id} class="data-row ${selectedId === p.id ? 'selected' : ''}" onClick=${() => onSelectRow(p.id)}>
                     <td><div class="holding-name-cell">${inst?.name}</div><div class="holding-sub-cell">${inst?.l3}</div></td>
                     <td class="num tabular">${p.units != null ? formatNum(p.units, p.units < 100 ? 4 : 2) : '—'}</td>
                     <td class="num tabular">${p.nav != null ? formatNum(p.nav, 2) : '—'}</td>
+                    <td class="num tabular">${avgCost != null ? formatNum(avgCost, 2) : '—'}</td>
                     <td class="num tabular">${formatINR(p.current_value)}</td>
                     <td class="num tabular gain-cell ${gp == null ? 'flat' : gp >= 0 ? 'up' : 'down'}">${gp == null ? '—' : formatPct(gp)}</td>
                     <td class="num tabular">${(weight * 100).toFixed(1)}%</td>
@@ -1702,7 +1715,7 @@ function InsightsArea({ scope }) {
 }
 
 function PortfolioScreen({ onNavigate }) {
-  const [classId, setClassId] = useState('foreign_equity');
+  const [classId, setClassId] = useState('all');
   const [memberId, setMemberId] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [sortKey, setSortKey] = useState('value');
