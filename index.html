@@ -878,6 +878,7 @@ const TABLE_COLUMNS = [
   { key: 'units', label: 'Units', num: true },
   { key: 'nav', label: 'NAV', num: true },
   { key: 'avgCost', label: 'Avg Cost', num: true },
+  { key: 'invested', label: 'Invested', num: true },
   { key: 'value', label: 'Value', num: true },
   { key: 'gain', label: 'Gain %', num: true },
   { key: 'weight', label: 'Weight', num: true },
@@ -889,14 +890,21 @@ function sortValue(p, key, total) {
     case 'units': return p.units ?? -1;
     case 'nav': return p.nav ?? -1;
     case 'avgCost': { const c = avgCostOf(p); return c == null ? -1 : c; }
+    case 'invested': { const v = realCostBasis(p); return v == null ? -1 : v; }
     case 'value': return p.current_value ?? 0;
     case 'gain': { const g = gainPctOf(p); return g == null ? -Infinity : g; }
     case 'weight': return total ? p.current_value / total : 0;
     default: return 0;
   }
 }
+// Real cost basis in INR — cost_basis directly, or cost_basis_usd converted at the current spot
+// rate — null (never a fabricated number) where no real cost basis is on file. Shared by the Gain %
+// and Invested columns so both trace to the exact same real figure.
+function realCostBasis(p) {
+  return p.cost_basis != null ? p.cost_basis : (p.cost_basis_usd != null ? p.cost_basis_usd * PRICE_ASOF.usd_inr : null);
+}
 function gainPctOf(p) {
-  const cb = p.cost_basis != null ? p.cost_basis : (p.cost_basis_usd != null ? p.cost_basis_usd * PRICE_ASOF.usd_inr : null);
+  const cb = realCostBasis(p);
   return cb ? (p.current_value - cb) / cb : null;
 }
 // Average cost per unit, in the same native currency as `nav` (INR for most rows, USD for
@@ -1455,12 +1463,14 @@ function HoldingsTable({ classId, filtered, total, sortKey, sortDir, onSort, sel
               const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
               return sortDir === 'desc' ? -cmp : cmp;
             });
+            const groupInvested = g.positions.reduce((s, p) => s + (realCostBasis(p) || 0), 0);
             const rows = [
-              classId === 'all' ? html`<tr class="group-row" key=${g.key + '-hdr'}><td colspan="2">${g.key}</td><td class="num"></td><td class="num"></td><td class="num tabular">${formatINR(g.value)}</td><td class="num"></td><td class="num tabular">${(g.weight * 100).toFixed(1)}%</td></tr>` : null,
+              classId === 'all' ? html`<tr class="group-row" key=${g.key + '-hdr'}><td colspan="2">${g.key}</td><td class="num"></td><td class="num"></td><td class="num tabular">${groupInvested ? formatINR(groupInvested) : ''}</td><td class="num tabular">${formatINR(g.value)}</td><td class="num"></td><td class="num tabular">${(g.weight * 100).toFixed(1)}%</td></tr>` : null,
               ...sorted.map(p => {
                 const inst = instruments[p.instrument_id];
                 const gp = gainPctOf(p);
                 const avgCost = avgCostOf(p);
+                const invested = realCostBasis(p);
                 const weight = total ? p.current_value / total : 0;
                 return html`
                   <tr key=${p.id} class="data-row ${selectedId === p.id ? 'selected' : ''}" onClick=${() => onSelectRow(p.id)}>
@@ -1468,6 +1478,7 @@ function HoldingsTable({ classId, filtered, total, sortKey, sortDir, onSort, sel
                     <td class="num tabular">${p.units != null ? formatNum(p.units, p.units < 100 ? 4 : 2) : '—'}</td>
                     <td class="num tabular">${p.nav != null ? formatNum(p.nav, 2) : '—'}</td>
                     <td class="num tabular">${avgCost != null ? formatNum(avgCost, 2) : '—'}</td>
+                    <td class="num tabular">${invested != null ? formatINR(invested) : '—'}</td>
                     <td class="num tabular">${formatINR(p.current_value)}</td>
                     <td class="num tabular gain-cell ${gp == null ? 'flat' : gp >= 0 ? 'up' : 'down'}">${gp == null ? '—' : formatPct(gp)}</td>
                     <td class="num tabular">${(weight * 100).toFixed(1)}%</td>
@@ -2081,6 +2092,15 @@ const GOAL_PLAN = {
 };
 GOAL_PLAN.marketExisting = householdTotals.current_total - GOAL_PLAN.fd - GOAL_PLAN.epfExisting - GOAL_PLAN.gold;
 
+// Real amount actually invested to date, household-wide — sum of impliedCostBasis() across every
+// priced position (same function ScopeHeroCard already uses for its own "Invested ₹X" line, so this
+// stays consistent with that existing convention rather than introducing a second way to compute
+// "invested"). Feeds the YoY bar chart's "Today" bar: instead of naively treating the whole current
+// net worth as "invested" with zero growth, it splits today's real number into what was actually put
+// in vs. what has already grown — a more honest starting point for the chart than pretending no gain
+// exists yet.
+const GOAL_INVESTED_TO_DATE = ALL_PRICED.reduce((s, p) => s + impliedCostBasis(p), 0);
+
 function gpFvLump(pv, rate, months) { return pv * Math.pow(1 + rate / 12, months); }
 function gpFvFlatAnnuity(monthly, rate, months) {
   const r = rate / 12; let fv = 0;
@@ -2123,9 +2143,9 @@ function gpYearSeries(rates) {
 // never a separately-modeled number, so it can't drift from the real total the same series produces.
 function gpYearSeriesWithPrincipal(rates) {
   const P = GOAL_PLAN;
-  const rows = [{ year: 2026, value: householdTotals.current_total, invested: householdTotals.current_total, growth: 0 }];
+  const rows = [{ year: 2026, value: householdTotals.current_total, invested: GOAL_INVESTED_TO_DATE, growth: Math.max(0, householdTotals.current_total - GOAL_INVESTED_TO_DATE) }];
   let sipMonthly = P.sipStart, fd = P.fd, epfE = P.epfExisting, epfC = 0, gold = P.gold, mkt = P.marketExisting, sipCorpus = 0, mayCorpus = 0;
-  let principal = householdTotals.current_total;
+  let principal = GOAL_INVESTED_TO_DATE;
   const rFD = P.fdRate / 12, rEPF = P.epfRate / 12, rGold = P.goldRate / 12, rEx = rates.existing / 12, rSip = rates.sip / 12;
   for (let m = 1; m <= P.months; m++) {
     fd *= (1 + rFD); epfE *= (1 + rEPF); gold *= (1 + rGold); mkt *= (1 + rEx);
@@ -2329,10 +2349,10 @@ function GoalPlanScreen() {
             </div>
             <${GoalGrowthBars} rows=${barRows} height=${280} />
             <div class="trend-legend">
-              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--bronze-500)"></span>Invested — starting corpus + every SIP/EPF/May-lumpsum contribution to date</span>
+              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--bronze-500)"></span>Invested — real cost basis to date, plus every SIP/EPF/May-lumpsum contribution from here</span>
               <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--sage-500)"></span>Growth — that year's value minus what was actually put in</span>
             </div>
-            <div class="trend-note" style="margin-top:var(--space-3);">${GOAL_PLAN.scenarios[barScenario].label} case: existing corpus at ${(GOAL_PLAN.scenarios[barScenario].existing * 100).toFixed(0)}%, new money at ${(GOAL_PLAN.scenarios[barScenario].sip * 100).toFixed(1)}%. Bar totals match the ${barScenario} line in the scenario comparison below — this view just splits each year's number into what you put in vs. what it grew by.</div>
+            <div class="trend-note" style="margin-top:var(--space-3);">${GOAL_PLAN.scenarios[barScenario].label} case: existing corpus at ${(GOAL_PLAN.scenarios[barScenario].existing * 100).toFixed(0)}%, new money at ${(GOAL_PLAN.scenarios[barScenario].sip * 100).toFixed(1)}%. Bar totals match the ${barScenario} line in the scenario comparison below — this view just splits each year's number into what you put in vs. what it grew by. Today's bar already reflects <b>${formatINR(GOAL_INVESTED_TO_DATE)}</b> of real invested principal (cost basis on file, where known) vs. <b>${formatINR(Math.max(0, householdTotals.current_total - GOAL_INVESTED_TO_DATE))}</b> already grown — not every future year starts from zero gain.</div>
             <div class="trend-stats-row" style="margin-top:var(--space-5);">
               ${Object.entries(GOAL_PLAN.scenarios).map(([name, rates]) => html`
                 <div key=${name}>
