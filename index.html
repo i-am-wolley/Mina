@@ -251,6 +251,13 @@
   .mini-alloc-item { display: flex; align-items: center; gap: 8px; font-size: var(--fs-meta); }
   .mini-alloc-dot { width: 9px; height: 9px; border-radius: var(--radius-pill); flex-shrink: 0; }
   .mini-alloc-name { color: var(--text-secondary); flex: 1; }
+  .split-bar { display: flex; height: 30px; border-radius: var(--radius-pill); overflow: hidden; }
+  .split-bar-seg { height: 100%; }
+  .split-bar-seg:not(:last-child) { border-right: 2px solid var(--surface-card); }
+  .split-bar-legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); margin-top: var(--space-5); }
+  .split-bar-legend-item { display: flex; align-items: center; gap: var(--space-2); font-size: 12.5px; color: var(--text-secondary); }
+  .split-bar-dot { width: 9px; height: 9px; border-radius: var(--radius-pill); flex-shrink: 0; }
+  .split-bar-legend-item b { color: var(--text-primary); font-family: var(--font-mono); }
   .mini-alloc-pct { font-weight: var(--fw-bold); color: var(--text-primary); }
 
   .alloc-list { display: flex; flex-direction: column; }
@@ -2198,11 +2205,37 @@ const FD_ALTERNATIVE = {
 // — replaces the earlier all-3-scenarios line chart with a single-scenario, "where did this year's
 // number actually come from" view. Compact currency labels reuse the same formatINR the rest of
 // the app uses, so a crowded 11-bar chart stays legible.
-function GoalGrowthBars({ rows, height = 260 }) {
-  const w = 720, pad = 10, padBottom = 22, padTop = 24;
+// Single-row split bar — one continuous pill divided into colored segments by weight, used wherever
+// a full donut is overkill for 4 items (e.g. the Goal tab's monthly-allocation split).
+function SplitBar({ items }) {
+  return html`
+    <div>
+      <div class="split-bar">
+        ${items.map(g => html`<div class="split-bar-seg" key=${g.key} style=${{ flex: g.weight, background: `var(--${g.color}-500)` }} title="${g.key} · ${(g.weight * 100).toFixed(0)}%" />`)}
+      </div>
+      <div class="split-bar-legend">
+        ${items.map(g => html`
+          <div class="split-bar-legend-item" key=${g.key}>
+            <span class="split-bar-dot" style=${{ background: `var(--${g.color}-500)` }} />
+            <span>${g.key}</span>
+            <b>${(g.weight * 100).toFixed(0)}%</b>
+          </div>
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+function GoalGrowthBars({ rows, height = 280 }) {
+  // viewBox width is chosen to closely match the card's real rendered width (~1100-1180px on
+  // desktop) rather than the 720 other hand-rolled charts here use. With preserveAspectRatio="none"
+  // and a fixed pixel height, a narrower viewBox gets stretched horizontally to fill the container —
+  // barely visible on a plain line chart, but very visible as elongated, unprofessional-looking text
+  // on a chart this text-heavy. Matching the viewBox width to the real width keeps the scale ~1:1.
+  const w = 1080, pad = 18, padBottom = 26, padTop = 30;
   const maxVal = Math.max(...rows.map(r => r.value), 1);
   const bandW = (w - pad * 2) / rows.length;
-  const barW = Math.min(bandW * 0.62, 48);
+  const barW = Math.min(bandW * 0.6, 52);
   function y(val) { return padTop + (1 - val / maxVal) * (height - padTop - padBottom); }
   const baseline = height - padBottom;
   return html`
@@ -2217,12 +2250,12 @@ function GoalGrowthBars({ rows, height = 260 }) {
         const growthH = Math.max(0, yInvestedTop - yTotalTop);
         return html`
           <g key=${r.year}>
-            <rect x=${x0} y=${yInvestedTop} width=${barW} height=${investedH} fill="var(--bronze-500)" rx="2" />
-            ${growthH > 0.5 ? html`<rect x=${x0} y=${yTotalTop} width=${barW} height=${growthH} fill="var(--sage-500)" rx="2" />` : ''}
-            <text x=${cx} y=${yTotalTop - 6} font-size="9" fill="var(--text-secondary)" text-anchor="middle" class="tabular">${formatINR(r.value)}</text>
-            ${growthH > 15 ? html`<text x=${cx} y=${(yTotalTop + yInvestedTop) / 2 + 3} font-size="8" fill="#fff" text-anchor="middle" class="tabular">${formatINR(r.growth)}</text>` : ''}
-            ${investedH > 15 ? html`<text x=${cx} y=${(yInvestedTop + baseline) / 2 + 3} font-size="8" fill="#fff" text-anchor="middle" class="tabular">${formatINR(r.invested)}</text>` : ''}
-            <text x=${cx} y=${height - 5} font-size="9" fill="var(--text-tertiary)" text-anchor="middle">${r.year === 2026 ? 'Today' : r.year}</text>
+            <rect x=${x0} y=${yInvestedTop} width=${barW} height=${investedH} fill="var(--bronze-500)" rx="3" />
+            ${growthH > 0.5 ? html`<rect x=${x0} y=${yTotalTop} width=${barW} height=${growthH} fill="var(--sage-500)" rx="3" />` : ''}
+            <text x=${cx} y=${yTotalTop - 8} font-size="12" font-weight="600" fill="var(--text-secondary)" text-anchor="middle" class="tabular">${formatINR(r.value)}</text>
+            ${growthH > 22 ? html`<text x=${cx} y=${(yTotalTop + yInvestedTop) / 2 + 4} font-size="10.5" fill="#fff" text-anchor="middle" class="tabular">${formatINR(r.growth)}</text>` : ''}
+            ${investedH > 22 ? html`<text x=${cx} y=${(yInvestedTop + baseline) / 2 + 4} font-size="10.5" fill="#fff" text-anchor="middle" class="tabular">${formatINR(r.invested)}</text>` : ''}
+            <text x=${cx} y=${height - 8} font-size="11" fill="var(--text-tertiary)" text-anchor="middle">${r.year === 2026 ? 'Today' : r.year}</text>
           </g>
         `;
       })}
@@ -2281,7 +2314,7 @@ function GoalPlanScreen() {
                 <button key=${name} class="class-btn ${barScenario === name ? 'active' : ''}" onClick=${() => setBarScenario(name)}>${rates.label}</button>
               `)}
             </div>
-            <${GoalGrowthBars} rows=${barRows} height=${240} />
+            <${GoalGrowthBars} rows=${barRows} height=${280} />
             <div class="trend-legend">
               <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--bronze-500)"></span>Invested — starting corpus + every SIP/EPF/May-lumpsum contribution to date</span>
               <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--sage-500)"></span>Growth — that year's value minus what was actually put in</span>
@@ -2302,13 +2335,8 @@ function GoalPlanScreen() {
         <div>
           <div class="insight-section-title"><${Icon} name="chart" size=${13} />Next 6 months — ₹2.34L/mo split</div>
           <${Card}>
-            <div class="mini-alloc" style="cursor:default">
-              <${Donut} groups=${GOAL_ALLOCATION} size=${120} strokeW=${20} />
-              <div class="mini-alloc-legend">
-                ${GOAL_ALLOCATION.map(g => html`<div class="mini-alloc-item" key=${g.key}><span class="mini-alloc-dot" style=${{ background: `var(--${g.color}-500)` }} /><span class="mini-alloc-name">${g.key}</span><span class="mini-alloc-pct tabular">${(g.weight * 100).toFixed(0)}%</span></div>`)}
-              </div>
-            </div>
-            <div class="trend-note">The ₹10L May lumpsum invests in this same split — not a separate bucket.</div>
+            <${SplitBar} items=${GOAL_ALLOCATION} />
+            <div class="trend-note" style="margin-top:var(--space-5);">The ₹10L May lumpsum invests in this same split — not a separate bucket.</div>
           <//>
         </div>
 

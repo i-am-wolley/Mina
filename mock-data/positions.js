@@ -43,6 +43,10 @@ export const positions = [
 
   // Vinod — RSU, FDs, EPF (statement/screenshot sourced; RSU re-priced against live Yahoo BUD quote)
   { id: 'pos_v_rsu', account_id: 'acc_vinod_rsu', instrument_id: 'inst_abinbev_rsu', current_value: 1915067.86, cost_basis: null, unrealized_gain: null, units: 255, nav: 79.13, price_usd: 79.13, nav_asof: '2026-09-02 (Yahoo Finance)' },
+  // Second RSU lot — a new vest the user reported directly, dated today. Same instrument, same last
+  // Yahoo-quoted price (no fresh quote pulled for this pass); cost_basis null like the first lot,
+  // since no vest-date FMV was provided either.
+  { id: 'pos_v_rsu_2', account_id: 'acc_vinod_rsu', instrument_id: 'inst_abinbev_rsu', current_value: 1434423.38, cost_basis: null, unrealized_gain: null, units: 191, nav: 79.13, price_usd: 79.13, nav_asof: '2026-09-02 (Yahoo Finance)', vest_date: '2026-09-04', source: 'User-reported new vest' },
   { id: 'pos_v_fd_1', account_id: 'acc_vinod_fd', instrument_id: 'inst_shriram_fd', current_value: 509000, cost_basis: 500000, unrealized_gain: 9000 },
   { id: 'pos_v_fd_2', account_id: 'acc_vinod_fd', instrument_id: 'inst_hdfc_fd_1', current_value: 1227000, cost_basis: 1000000, unrealized_gain: 227000 },
   { id: 'pos_v_fd_3', account_id: 'acc_vinod_fd', instrument_id: 'inst_hdfc_fd_2', current_value: 1218000, cost_basis: 1000000, unrealized_gain: 218000 },
@@ -94,7 +98,7 @@ export const positions = [
 export const PRICE_ASOF = { date: '2026-09-02', usd_inr: 94.908, source: 'MF NAVs: AMFI official daily NAV file (portal.amfiindia.com), matched by ISIN, dated 2026-09-01. Stocks/RSU/FX/Gold ETF: Yahoo Finance real-time quote API (query1.finance.yahoo.com), matched by ticker, pulled 2026-09-02.' };
 
 // Sum of every position's current_value. All 11 MF positions use AMFI's official NAV file by ISIN.
-// All 20 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker — every
+// All 21 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker — every
 // priced position in the household traces to one of exactly two authoritative sources.
 //
 // Real estate (mock-data/real-estate.js, ₹3,42,16,500) is deliberately excluded from current_total
@@ -103,9 +107,12 @@ export const PRICE_ASOF = { date: '2026-09-02', usd_inr: 94.908, source: 'MF NAV
 // total is investable/liquid net worth, not total net worth including immovable property. See the
 // Debt & Immovable Assets tab for real estate's own figures.
 export const householdTotals = {
-  current_total: 41156535,
+  current_total: 42590958.38,
   delta_today: 42300,        // SYNTHETIC — no daily snapshot pipeline yet (Stage 8)
   delta_today_pct: 0.0011,   // SYNTHETIC
+  // delta_month_pct deliberately still measures 41156535 vs 40701024 (2026-08-02 → 2026-09-02 reprice)
+  // — the new RSU lot (pos_v_rsu_2, 2026-09-04) is new shares entering tracking, not a market move,
+  // same reasoning as excluding real estate/gold's first-tracked value from this figure.
   delta_month_pct: 0.01119,  // REAL — (41156535 - 40701024) / 40701024, the actual 2026-08-02 → 2026-09-02 move
   xirr: 0.152,               // SYNTHETIC — real per-position XIRR needs cashflow-dated lot history
   twr: 0.161,                // SYNTHETIC
