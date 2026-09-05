@@ -643,7 +643,8 @@ const CLASS_BUCKETS = [
   { id: 'all', label: 'All' },
   { id: 'mf', label: 'Mutual Funds', l3s: ['Index fund', 'Active MF', 'Liquid fund'] },
   { id: 'indian_equity', label: 'Indian Equity', l3s: ['Domestic stock'] },
-  { id: 'foreign_equity', label: 'Foreign Equity', l3s: ['Foreign stock', 'ESOP/RSU/SAR'] },
+  { id: 'foreign_equity', label: 'Foreign Equity', l3s: ['Foreign stock'] },
+  { id: 'rsu', label: 'RSU/ESOP', l3s: ['ESOP/RSU/SAR'] },
   { id: 'epf', label: 'EPF', l3s: ['EPF'] },
   { id: 'fixed_income', label: 'Fixed Income', l3s: ['FD'] },
   { id: 'real_assets', label: 'Gold', l3s: ['Gold ETF'] },
@@ -935,9 +936,9 @@ function insightUsNoFund() {
   return { id: 'us-no-fund', icon: 'chart', tag: 'Diversification', title: 'All US exposure is individual stock picks', body: `${ids.length} different US stocks total <b>${formatINR(v)}</b> (${(v / total * 100).toFixed(1)}%) — neither of you holds a single US index fund or ETF.` };
 }
 function insightEmployerConc() {
-  const p = positions.find(x => x.instrument_id === 'inst_abinbev_rsu');
-  if (!p) return null;
-  return { id: 'employer-conc', icon: 'link', tag: 'Concentration', title: "Vinod's paycheck and part of his portfolio move together", body: `His EPF establishment is AB InBev GCC Services — his employer. He also holds <b>${formatINR(p.current_value)}</b> (${(p.current_value / householdTotals.current_total * 100).toFixed(1)}%) of AB InBev RSU.` };
+  const rsuValue = positions.filter(x => x.instrument_id === 'inst_abinbev_rsu').reduce((s, p) => s + p.current_value, 0);
+  if (!rsuValue) return null;
+  return { id: 'employer-conc', icon: 'link', tag: 'Concentration', title: "Vinod's paycheck and part of his portfolio move together", body: `His EPF establishment is AB InBev GCC Services — his employer. He also holds <b>${formatINR(rsuValue)}</b> (${(rsuValue / householdTotals.current_total * 100).toFixed(1)}%) of AB InBev RSU, across both vest lots.` };
 }
 function insightLiquidity() {
   const ids = Object.values(instruments).filter(i => ['EPF', 'FD'].includes(i.l3)).map(i => i.id);
@@ -981,7 +982,8 @@ const SPECIAL_BY_INSTRUMENT = {
 };
 const CLASS_RELEVANT = {
   all: PORTFOLIO_INSIGHTS,
-  foreign_equity: [insightSemiTheme, insightUsNoFund, insightEmployerConc],
+  foreign_equity: [insightSemiTheme, insightUsNoFund],
+  rsu: [insightEmployerConc],
   mf: [insightCostDrag, insightPpfasUs, insightElssLockin],
   indian_equity: [],
   epf: [insightLiquidity],
@@ -1424,6 +1426,11 @@ function HeroStat({ label, value, dim }) {
   return html`<span class="hero-toggle-value tabular ${dim ? 'dim' : (value < 0 ? 'down' : '')}">${pctOrDash(value)}<span class="hero-toggle-label"> ${label}</span></span>`;
 }
 function PortfolioHeroCard() {
+  // Absolute % increase — simple (value - invested) / invested, not annualized like XIRR/TWR.
+  // Invested reuses GOAL_INVESTED_TO_DATE (impliedCostBasis summed across every priced position, the
+  // same convention ScopeHeroCard already uses) so this never becomes a second, drifting source of
+  // "what's invested."
+  const absPct = GOAL_INVESTED_TO_DATE ? (householdTotals.current_total - GOAL_INVESTED_TO_DATE) / GOAL_INVESTED_TO_DATE : null;
   return html`
     <${Card}>
       <div class="hero-card-label">Household</div>
@@ -1432,14 +1439,22 @@ function PortfolioHeroCard() {
         <${HeroStat} label="XIRR" value=${householdTotals.xirr} />
         <span class="hero-toggle-swap">⇄</span>
         <${HeroStat} label="TWR" value=${householdTotals.twr} dim />
+        <span class="hero-toggle-swap">·</span>
+        <${HeroStat} label="Absolute" value=${absPct} />
       </div>
-      <div class="hero-toggle-note">What you personally earned, including timing.</div>
+      <div class="hero-toggle-note">What you personally earned, including timing. Absolute is the simple total return since invested, not annualised.</div>
     <//>
   `;
 }
 function ScopeHeroCard({ scope }) {
   const m = scopeReturnMetrics(scope);
   const invested = scope.scopePositions.reduce((s, p) => s + impliedCostBasis(p), 0);
+  const absPct = invested ? (scope.scopeTotal - invested) / invested : null;
+  // Most scopes fall into scopeReturnMetrics' generic branch, whose "Total return" IS this exact
+  // (value - invested) / invested figure — showing "Absolute" alongside it would just repeat the same
+  // number under a second label. Only add it where the primary metric is something else (XIRR/TWR at
+  // the household level, an FD's contracted rate, EPF's real CAGR), where it's genuinely new info.
+  const showAbsolute = m.primary.label !== 'Total return';
   return html`
     <${Card}>
       <div class="hero-card-label">${scope.label}</div>
@@ -1447,6 +1462,7 @@ function ScopeHeroCard({ scope }) {
       <div class="hero-toggle">
         <${HeroStat} label=${m.primary.label} value=${m.primary.value} />
         ${m.secondary ? html`<span class="hero-toggle-swap">⇄</span><${HeroStat} label=${m.secondary.label} value=${m.secondary.value} dim />` : ''}
+        ${showAbsolute ? html`<span class="hero-toggle-swap">·</span><${HeroStat} label="Absolute" value=${absPct} />` : ''}
       </div>
       <div class="hero-toggle-note">Invested ${formatINR(invested)} · ${m.note}</div>
     <//>
