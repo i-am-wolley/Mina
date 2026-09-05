@@ -79,18 +79,34 @@ export const positions = [
   //   HDFC BSE Sensex Index Fund - Direct (Vinod, pos_v_mf_1): +₹46,997.65 invested → +64.148 units @732.643
   //   Axis Small Cap Fund - Direct (Keerthana, pos_k_mf_2): +167.07 units → +₹22,998.86 invested @137.66
   //   HDFC Mid Cap Fund - Direct (Keerthana, pos_k_mf_5): +₹46,997.65 invested → +200.345 units @234.584
-  //   ICICI Pru Nifty Next 50 Index Fund (Keerthana, pos_k_mf_6): +869.57 units → +₹55,744.22 invested @64.1055
-  // A 5th reported item (Vanguard Total International Stock ETF, ~$498.50/5.6471 units) was marked
-  // "No" (not actually executed) in the user's own list and is deliberately NOT reflected here.
+  // A 5th reported item (Vanguard Total International Stock ETF) was misread as "not executed" and
+  // initially excluded — corrected 2026-09-05, see pos_v_vxus below.
+  //
+  // Correction, 2026-09-06: the "ICICI Prudential Nifty Next 50 Index Fund" purchase above was
+  // originally appended to pos_k_mf_6 (the Regular Plan, ISIN INF109K01IF1) — the user clarified the
+  // actual purchase was the **Direct Plan**, a genuinely different fund (different ISIN, different
+  // NAV), not a top-up of the Regular Plan holding. pos_k_mf_6 was reverted to its pre-2026-09-05
+  // units/cost_basis, and the +869.57 units / +₹55,744.22 invested now live on a new position,
+  // pos_k_mf_10, against a new instrument, inst_icici_next50_direct.
   { id: 'pos_k_mf_1', account_id: 'acc_keerthana_mf', instrument_id: 'inst_axis_elss', current_value: 2418406.03, cost_basis: 1405000, unrealized_gain: 1013406.03, units: 21669.004, nav: 111.6067, nav_asof: '2026-09-04 (AMFI)' },
-  { id: 'pos_k_mf_2', account_id: 'acc_keerthana_mf', instrument_id: 'inst_axis_smallcap', current_value: 3148044.4, cost_basis: 1837998.86, unrealized_gain: 1310045.54, units: 22868.258, nav: 137.66, nav_asof: '2026-09-04 (AMFI)' },
-  { id: 'pos_k_mf_3', account_id: 'acc_keerthana_mf', instrument_id: 'inst_edelweiss_liquid', current_value: 316727.07, cost_basis: 300000, unrealized_gain: 16727.07, units: 86.308, nav: 3669.7301, nav_asof: '2026-09-04 (AMFI)' },
+  // Corrected 2026-09-06: the user gave the real total position directly (invested ₹17.38L, value
+  // ₹30.18L, already including the 167.07-unit purchase above) — our prior cost_basis (₹18.15L,
+  // pre-dating this session) was off by almost exactly ₹1L, a transcription error from the original
+  // CAS read that had gone unnoticed through 4 reprice passes. Units backed out from the real
+  // current_value ÷ the fund's real AMFI NAV (137.66), the same "derive the unknown side" convention
+  // used for the other 4 top-ups — not a separately guessed unit count.
+  { id: 'pos_k_mf_2', account_id: 'acc_keerthana_mf', instrument_id: 'inst_axis_smallcap', current_value: 3018000, cost_basis: 1738000, unrealized_gain: 1280000, units: 21923.580, nav: 137.66, nav_asof: '2026-09-04 (AMFI)' },
+  // Two more real lots added 2026-09-06: ₹40,000 @ NAV 3630.75, ₹10,000 @ NAV 3662.65.
+  { id: 'pos_k_mf_3', account_id: 'acc_keerthana_mf', instrument_id: 'inst_edelweiss_liquid', current_value: 367175.84, cost_basis: 350000, unrealized_gain: 17175.84, units: 100.0553, nav: 3669.7301, nav_asof: '2026-09-04 (AMFI)' },
   { id: 'pos_k_mf_4', account_id: 'acc_keerthana_mf', instrument_id: 'inst_hdfc_sensex_regular_k', current_value: 963653.47, cost_basis: 427500, unrealized_gain: 536153.47, units: 1349.502, nav: 714.0808, nav_asof: '2026-09-04 (AMFI)' },
   { id: 'pos_k_mf_5', account_id: 'acc_keerthana_mf', instrument_id: 'inst_hdfc_midcap_k', current_value: 197633.27, cost_basis: 177997.65, unrealized_gain: 19635.62, units: 842.484, nav: 234.584, nav_asof: '2026-09-04 (AMFI)' },
-  { id: 'pos_k_mf_6', account_id: 'acc_keerthana_mf', instrument_id: 'inst_icici_next50', current_value: 182104.62, cost_basis: 115744.22, unrealized_gain: 66360.4, units: 2840.702, nav: 64.1055, nav_asof: '2026-09-04 (AMFI)' },
+  { id: 'pos_k_mf_6', account_id: 'acc_keerthana_mf', instrument_id: 'inst_icici_next50', current_value: 126360.40, cost_basis: 60000, unrealized_gain: 66360.40, units: 1971.132, nav: 64.1055, nav_asof: '2026-09-04 (AMFI)' },
   { id: 'pos_k_mf_7', account_id: 'acc_keerthana_mf', instrument_id: 'inst_ppfas_flexicap_a', current_value: 221901.36, cost_basis: 188030.77, unrealized_gain: 33870.59, units: 2451.166, nav: 90.5289, nav_asof: '2026-09-04 (AMFI)' },
   { id: 'pos_k_mf_8', account_id: 'acc_keerthana_mf', instrument_id: 'inst_ppfas_flexicap_b', current_value: 1376016.74, cost_basis: 945000, unrealized_gain: 431016.74, units: 15199.751, nav: 90.5289, nav_asof: '2026-09-04 (AMFI)' },
   { id: 'pos_k_mf_9', account_id: 'acc_keerthana_mf', instrument_id: 'inst_quant_flexicap', current_value: 1395556.22, cost_basis: 1245000, unrealized_gain: 150556.22, units: 11526.359, nav: 121.0752, nav_asof: '2026-09-04 (AMFI)' },
+  // New holding, 2026-09-05 (corrected onto its own row 2026-09-06) — the Direct Plan of ICICI Next
+  // 50, a different ISIN from the Regular Plan the household already held (pos_k_mf_6).
+  { id: 'pos_k_mf_10', account_id: 'acc_keerthana_mf', instrument_id: 'inst_icici_next50_direct', current_value: 58997.02, cost_basis: 55744.22, unrealized_gain: 3252.80, units: 869.57, nav: 67.8462, nav_asof: '2026-09-04 (AMFI)' },
 
   // Keerthana — gold. Verified 2026-09-02 against Yahoo Finance's real-time NSE quote for the
   // HDFC Gold ETF itself (ticker HDFCGOLD.NS) — the same live-quote method used for every stock
@@ -118,7 +134,7 @@ export const positions = [
 
 export const PRICE_ASOF = { date: '2026-09-05', usd_inr: 94.49, source: 'MF NAVs: AMFI official daily NAV file (portal.amfiindia.com), matched by ISIN, dated 2026-09-04 (most recent published — 05-Sep NAV not out yet at pull time). Stocks/RSU/FX/Gold ETF: Yahoo Finance real-time quote API (query1.finance.yahoo.com), matched by ticker, pulled 2026-09-05.' };
 
-// Sum of every position's current_value. All 11 MF positions use AMFI's official NAV file by ISIN.
+// Sum of every position's current_value. All 12 MF positions use AMFI's official NAV file by ISIN.
 // All 27 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker — every
 // priced position in the household traces to one of exactly two authoritative sources.
 //
@@ -128,15 +144,17 @@ export const PRICE_ASOF = { date: '2026-09-05', usd_inr: 94.49, source: 'MF NAVs
 // total is investable/liquid net worth, not total net worth including immovable property. See the
 // Debt & Immovable Assets tab for real estate's own figures.
 export const householdTotals = {
-  current_total: 43187887.87,
+  current_total: 43111545.04,
   delta_today: 42300,        // SYNTHETIC — no daily snapshot pipeline yet (Stage 8)
   delta_today_pct: 0.0011,   // SYNTHETIC
   // delta_month_pct is the real 2026-09-04 → 2026-09-05 reprice move (42898410.44 → 42967974.40,
   // i.e. every position repriced EXCLUDING the ₹1,72,738.38 of brand-new SIP top-up money added this
   // pass — new capital going in isn't a market move, same reasoning as excluding the RSU vest and
-  // real estate/gold's first-tracked values from this figure previously). pos_v_vxus (₹47,175.09, a
-  // brand-new holding added right after this pass) is excluded from this figure for the same reason
-  // — current_total moved by its full value, but delta_month_pct still measures market movement only.
+  // real estate/gold's first-tracked values from this figure previously). Left untouched by two later
+  // same-day changes for the same reason: pos_v_vxus (a brand-new holding) and the 2026-09-06 pass
+  // (2 new Edelweiss lots = new capital; the ICICI Next50 Direct/Regular split and the Axis Small Cap
+  // correction are a reclassification and a data-error fix, neither a market move) — current_total
+  // moves by each change's full effect, but delta_month_pct keeps measuring market movement only.
   delta_month_pct: 0.001622, // REAL — (42967974.40 - 42898410.44) / 42898410.44
   xirr: 0.152,               // SYNTHETIC — real per-position XIRR needs cashflow-dated lot history
   twr: 0.161,                // SYNTHETIC

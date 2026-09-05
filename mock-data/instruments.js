@@ -72,6 +72,9 @@ export const instruments = {
   inst_hdfc_sensex_regular_k: { id: 'inst_hdfc_sensex_regular_k', isin: 'INF179K01LA9', name: 'HDFC BSE Sensex Index Fund - Regular Plan', l1: 'Equity', l2: 'Pooled', l3: 'Index fund', currency: 'INR', source: 'folio 16750703/02' },
   inst_hdfc_midcap_k: { id: 'inst_hdfc_midcap_k', isin: 'INF179K01XQ0', name: 'HDFC Mid Cap Fund - Direct Plan', l1: 'Equity', l2: 'Pooled', l3: 'Active MF', currency: 'INR', source: 'folio 41310923/57' },
   inst_icici_next50: { id: 'inst_icici_next50', isin: 'INF109K01IF1', name: 'ICICI Prudential Nifty Next 50 Index Fund', l1: 'Equity', l2: 'Pooled', l3: 'Index fund', currency: 'INR', source: 'folio 16437881/90' },
+  // A genuinely different fund from inst_icici_next50 above (Regular Plan) — same underlying index,
+  // different ISIN/NAV since it's the Direct Plan. Added 2026-09-05 as a real new purchase.
+  inst_icici_next50_direct: { id: 'inst_icici_next50_direct', isin: 'INF109K01Y80', name: 'ICICI Prudential Nifty Next 50 Index Fund - Direct Plan', l1: 'Equity', l2: 'Pooled', l3: 'Index fund', currency: 'INR', source: 'CAMS/KFintech (new purchase, 2026-09-05)' },
   inst_ppfas_flexicap_a: { id: 'inst_ppfas_flexicap_a', isin: 'INF879O01027', name: 'Parag Parikh Flexi Cap Fund - Direct Growth', l1: 'Equity', l2: 'Pooled', l3: 'Active MF', currency: 'INR', source: 'folio 10831093' },
   inst_ppfas_flexicap_b: { id: 'inst_ppfas_flexicap_b', isin: 'INF879O01027', name: 'Parag Parikh Flexi Cap Fund - Direct Growth', l1: 'Equity', l2: 'Pooled', l3: 'Active MF', currency: 'INR', source: 'folio 11572522' },
   inst_quant_flexicap: { id: 'inst_quant_flexicap', isin: 'INF966L01911', name: 'quant Flexi Cap Fund - Direct Growth', l1: 'Equity', l2: 'Pooled', l3: 'Active MF', currency: 'INR', source: 'folio 51066654544/0' },
