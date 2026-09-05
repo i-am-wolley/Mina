@@ -669,7 +669,7 @@ function currencyMajority(positionList) {
 }
 function buildIllustrativeTrend(startValue, endValue, days = 90, seed = 7) {
   const rand = seededRandom(seed);
-  const today = new Date('2026-09-02T00:00:00');
+  const today = new Date('2026-09-05T00:00:00');
   let value = startValue;
   const series = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -700,20 +700,20 @@ function whatChangedCards() {
   if (nextEvent) {
     const inst = instruments[nextEvent.instrument_id];
     const dayLabel = DAY_LABELS[new Date(nextEvent.date + 'T00:00:00').getDay()];
-    cards.push({ icon: 'calendar', title: nextEvent.label, sub: `${dayLabel} · ${inst?.name.split(' ').slice(0, 2).join(' ')}`, trailing: formatINR(nextEvent.amount), key: 'calendar' });
+    cards.push({ icon: 'calendar', title: nextEvent.label, sub: `${dayLabel} · ${inst?.name.split(' ').slice(0, 2).join(' ')}`, trailing: nextEvent.amount != null ? formatINR(nextEvent.amount) : '', key: 'calendar' });
   }
   return cards.slice(0, 3);
 }
 
 function AgendaList() {
-  const today = new Date('2026-09-02T00:00:00');
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const today = new Date('2026-09-05T00:00:00');
+  const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(d.getDate() + i);
     const iso = toLocalISO(d);
     return { date: d, iso, events: calendarEvents.filter(e => e.date === iso) };
   });
   const withEvents = days.filter(d => d.events.length);
-  if (!withEvents.length) return html`<div class="card-sub">Nothing on the calendar this week.</div>`;
+  if (!withEvents.length) return html`<div class="card-sub">Nothing on the calendar these two weeks.</div>`;
   return html`
     <div class="agenda-list">
       ${withEvents.flatMap(d => d.events.map(e => {
@@ -722,7 +722,7 @@ function AgendaList() {
           <div class="agenda-item" key=${e.id}>
             <div class="agenda-day"><div class="agenda-day-label">${DAY_LABELS[d.date.getDay()]}</div><div class="agenda-day-num tabular">${d.date.getDate()}</div></div>
             <div class="agenda-body"><div class="agenda-title">${e.label}</div><div class="agenda-sub">${inst?.name.split(' ').slice(0, 3).join(' ')}${e.action_required ? ' · needs a decision' : ''}</div></div>
-            <div class="agenda-amount tabular">${formatINR(e.amount)}</div>
+            ${e.amount != null ? html`<div class="agenda-amount tabular">${formatINR(e.amount)}</div>` : ''}
           </div>
         `;
       }))}
@@ -743,7 +743,10 @@ function portfolioActionItems() {
     immediate.push({ icon: 'flag', severity: f.severity, title: `${inst?.name.split(' ').slice(0, 3).join(' ')} · ${f.category.toLowerCase()}`, sub: f.signal, trailing: formatINR(f.exposure_amount), key: `flag-${f.code}` });
   });
   if (reviewQueue.pending_transactions > 0) immediate.push({ icon: 'inbox', title: `${reviewQueue.pending_transactions} extracted transactions awaiting review`, sub: 'Review queue', key: 'rq-txn' });
-  if (reviewQueue.pending_documents_uploaded > 0) immediate.push({ icon: 'inbox', title: `${reviewQueue.pending_documents_uploaded} uploaded documents not yet processed`, sub: 'No extraction pipeline built yet — sitting in the manual review queue', key: 'rq-docs' });
+  // reviewQueue.pending_documents_uploaded is deliberately NOT surfaced on Today — it's a disclosed
+  // build-state gap (no extraction pipeline exists yet), not something the user can act on, and the
+  // user asked for it not to read as an action item on the home screen. The number itself still lives
+  // in mock-data/review-queue.js for whoever needs the context.
 
   concentrationFlagsForClass(ALL_PRICED, householdTotals.current_total).slice(0, 2).forEach(c => {
     future.push({ icon: 'flag', title: `${c.name.split(' ').slice(0, 4).join(' ')} is ${(c.w * 100).toFixed(1)}% of net worth`, sub: 'Concentration worth keeping an eye on, not a call to trim', key: `conc-${c.id}` });
@@ -859,7 +862,7 @@ function TodayScreen({ onNavigate }) {
         <${MiniAllocation} onOpenPortfolio=${() => onNavigate('portfolio')} />
       </div>
       <div class="side-panel">
-        <div><div class="section-label">Next 7 days</div><${Card}><${AgendaList} /><//></div>
+        <div><div class="section-label">Next 14 days</div><${Card}><${AgendaList} /><//></div>
         <${PortfolioActions} />
       </div>
     </div>
