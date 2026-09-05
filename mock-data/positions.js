@@ -86,8 +86,16 @@ export const positions = [
   // originally appended to pos_k_mf_6 (the Regular Plan, ISIN INF109K01IF1) — the user clarified the
   // actual purchase was the **Direct Plan**, a genuinely different fund (different ISIN, different
   // NAV), not a top-up of the Regular Plan holding. pos_k_mf_6 was reverted to its pre-2026-09-05
-  // units/cost_basis, and the +869.57 units / +₹55,744.22 invested now live on a new position,
-  // pos_k_mf_10, against a new instrument, inst_icici_next50_direct.
+  // units/cost_basis, and the +869.57 units now live on a new position, pos_k_mf_10, against a new
+  // instrument, inst_icici_next50_direct.
+  //
+  // Second correction, same day: the invested amount for that new position had been computed as
+  // 869.57 × 64.1055 (₹55,744.22) — the Regular Plan's NAV, carried over from the original mistake —
+  // instead of the Direct Plan's own real NAV (67.8462). Since the purchase happened the day before
+  // this pricing pass (same AMFI-published NAV both times), invested should equal current_value
+  // almost exactly — the user caught this directly ("ideally there shouldn't be any growth").
+  // Recomputed cost_basis as 869.57 × 67.8462 = ₹58,997.02, matching current_value; unrealized_gain
+  // is now correctly 0, not a fabricated ₹3,252.80 gain from mixing two different funds' NAVs.
   { id: 'pos_k_mf_1', account_id: 'acc_keerthana_mf', instrument_id: 'inst_axis_elss', current_value: 2418406.03, cost_basis: 1405000, unrealized_gain: 1013406.03, units: 21669.004, nav: 111.6067, nav_asof: '2026-09-04 (AMFI)' },
   // Corrected 2026-09-06: the user gave the real total position directly (invested ₹17.38L, value
   // ₹30.18L, already including the 167.07-unit purchase above) — our prior cost_basis (₹18.15L,
@@ -106,7 +114,7 @@ export const positions = [
   { id: 'pos_k_mf_9', account_id: 'acc_keerthana_mf', instrument_id: 'inst_quant_flexicap', current_value: 1395556.22, cost_basis: 1245000, unrealized_gain: 150556.22, units: 11526.359, nav: 121.0752, nav_asof: '2026-09-04 (AMFI)' },
   // New holding, 2026-09-05 (corrected onto its own row 2026-09-06) — the Direct Plan of ICICI Next
   // 50, a different ISIN from the Regular Plan the household already held (pos_k_mf_6).
-  { id: 'pos_k_mf_10', account_id: 'acc_keerthana_mf', instrument_id: 'inst_icici_next50_direct', current_value: 58997.02, cost_basis: 55744.22, unrealized_gain: 3252.80, units: 869.57, nav: 67.8462, nav_asof: '2026-09-04 (AMFI)' },
+  { id: 'pos_k_mf_10', account_id: 'acc_keerthana_mf', instrument_id: 'inst_icici_next50_direct', current_value: 58997.02, cost_basis: 58997.02, unrealized_gain: 0, units: 869.57, nav: 67.8462, nav_asof: '2026-09-04 (AMFI)' },
 
   // Keerthana — gold. Verified 2026-09-02 against Yahoo Finance's real-time NSE quote for the
   // HDFC Gold ETF itself (ticker HDFCGOLD.NS) — the same live-quote method used for every stock
