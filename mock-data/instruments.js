@@ -58,6 +58,12 @@ export const instruments = {
   inst_msft: { id: 'inst_msft', isin: 'US5949181045', name: 'Microsoft Corporation', l1: 'Equity', l2: 'Direct listed', l3: 'Foreign stock', currency: 'USD', source: 'Alpaca', sector: 'Software & Cloud', tech: { week52High: 553.72, week52Low: 349.2, dayHigh: 511, dayLow: 499.36, volume: 17437000, asof: '2026-09-05 (Yahoo Finance)' } },
   inst_mrvl: { id: 'inst_mrvl', isin: 'US5738741041', name: 'Marvell Technology, Inc.', l1: 'Equity', l2: 'Direct listed', l3: 'Foreign stock', currency: 'USD', source: 'Alpaca', sector: 'Semiconductors', tech: { week52High: 329.88, week52Low: 63.07, dayHigh: 223.67, dayLow: 210.95, volume: 20890894, asof: '2026-09-05 (Yahoo Finance)' } },
   inst_now: { id: 'inst_now', isin: 'US81762P1021', name: 'ServiceNow, Inc.', l1: 'Equity', l2: 'Direct listed', l3: 'Foreign stock', currency: 'USD', source: 'Alpaca', sector: 'Software (SaaS)', tech: { week52High: 194.726, week52Low: 81.24, dayHigh: 145.2, dayLow: 138.8, volume: 12294794, asof: '2026-09-05 (Yahoo Finance)' } },
+  // New holding, 2026-09-05 — a real new purchase (not an existing lot), under the LRS via Vinod's
+  // Alpaca account, matching the diversification idea already discussed in the Goal tab's own fund
+  // research (GOAL_FUNDS). l3 kept as 'Foreign stock' (not a new l3 value) so it correctly falls into
+  // the existing Foreign Equity class bucket per the user's own framing ("it's part of the foreign
+  // assets") — it's a diversified ex-US equity ETF, not a single company, so no `sector` is set.
+  inst_vxus: { id: 'inst_vxus', isin: 'US9219097683', name: 'Vanguard Total International Stock ETF', l1: 'Equity', l2: 'Direct listed', l3: 'Foreign stock', currency: 'USD', source: 'Alpaca', tech: { week52High: 88.62, week52Low: 72.08, dayHigh: 88.495, dayLow: 87.8, volume: 6188605, asof: '2026-09-05 (Yahoo Finance)' } },
 
   // ---- Keerthana — mutual funds (CAMS/KFintech, folios real) ----
   inst_axis_elss: { id: 'inst_axis_elss', isin: 'INF846K01EW2', name: 'Axis ELSS Tax Saver Fund - Direct Growth', l1: 'Equity', l2: 'Pooled', l3: 'Active MF', currency: 'INR', source: 'folio 91032587935/0' },

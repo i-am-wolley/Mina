@@ -61,6 +61,11 @@ export const positions = [
   { id: 'pos_v_us_2', account_id: 'acc_vinod_alpaca', instrument_id: 'inst_msft', current_value: 796403.29, cost_basis: 626678.47, unrealized_gain: 169724.82, units: 16.867, nav: 47216.65, nav_asof: '2026-09-05 (Yahoo Finance)' },
   { id: 'pos_v_us_3', account_id: 'acc_vinod_alpaca', instrument_id: 'inst_mrvl', current_value: 107263.81, cost_basis: 130446.77, unrealized_gain: -23182.96, units: 5.078, nav: 21123.24, nav_asof: '2026-09-05 (Yahoo Finance)' },
   { id: 'pos_v_us_4', account_id: 'acc_vinod_alpaca', instrument_id: 'inst_now', current_value: 248760.29, cost_basis: 190278.93, unrealized_gain: 58481.36, units: 18.637, nav: 13347.66, nav_asof: '2026-09-05 (Yahoo Finance)' },
+  // New position, 2026-09-05 — a real new purchase (not an existing lot to append to, as first
+  // assumed). Cost basis: user-stated $498.50 invested for 5.6471 units, converted to INR at the
+  // same spot rate (94.49) used for the rest of this reprice pass, since no separate purchase-day
+  // rate was given. current_value uses the real live VXUS quote, not the purchase-day price.
+  { id: 'pos_v_vxus', account_id: 'acc_vinod_alpaca', instrument_id: 'inst_vxus', current_value: 47175.09, cost_basis: 47103.26, unrealized_gain: 71.82, units: 5.6471, nav: 8353.86, price_usd: 88.41, nav_asof: '2026-09-05 (Yahoo Finance)' },
 
   // Keerthana — mutual funds. Units/cost_basis from the CAMS CAS (30-Jun-2026 statement).
   // NAV source: AMFI's official daily NAV file, matched by exact ISIN.
@@ -114,7 +119,7 @@ export const positions = [
 export const PRICE_ASOF = { date: '2026-09-05', usd_inr: 94.49, source: 'MF NAVs: AMFI official daily NAV file (portal.amfiindia.com), matched by ISIN, dated 2026-09-04 (most recent published — 05-Sep NAV not out yet at pull time). Stocks/RSU/FX/Gold ETF: Yahoo Finance real-time quote API (query1.finance.yahoo.com), matched by ticker, pulled 2026-09-05.' };
 
 // Sum of every position's current_value. All 11 MF positions use AMFI's official NAV file by ISIN.
-// All 26 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker — every
+// All 27 stock/RSU/gold-ETF positions use Yahoo Finance's real-time quote API by ticker — every
 // priced position in the household traces to one of exactly two authoritative sources.
 //
 // Real estate (mock-data/real-estate.js, ₹3,42,16,500) is deliberately excluded from current_total
@@ -123,13 +128,15 @@ export const PRICE_ASOF = { date: '2026-09-05', usd_inr: 94.49, source: 'MF NAVs
 // total is investable/liquid net worth, not total net worth including immovable property. See the
 // Debt & Immovable Assets tab for real estate's own figures.
 export const householdTotals = {
-  current_total: 43140712.78,
+  current_total: 43187887.87,
   delta_today: 42300,        // SYNTHETIC — no daily snapshot pipeline yet (Stage 8)
   delta_today_pct: 0.0011,   // SYNTHETIC
   // delta_month_pct is the real 2026-09-04 → 2026-09-05 reprice move (42898410.44 → 42967974.40,
   // i.e. every position repriced EXCLUDING the ₹1,72,738.38 of brand-new SIP top-up money added this
   // pass — new capital going in isn't a market move, same reasoning as excluding the RSU vest and
-  // real estate/gold's first-tracked values from this figure previously).
+  // real estate/gold's first-tracked values from this figure previously). pos_v_vxus (₹47,175.09, a
+  // brand-new holding added right after this pass) is excluded from this figure for the same reason
+  // — current_total moved by its full value, but delta_month_pct still measures market movement only.
   delta_month_pct: 0.001622, // REAL — (42967974.40 - 42898410.44) / 42898410.44
   xirr: 0.152,               // SYNTHETIC — real per-position XIRR needs cashflow-dated lot history
   twr: 0.161,                // SYNTHETIC
