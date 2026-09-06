@@ -7,9 +7,11 @@
 // the "Investment updates" comment above the Keerthana MF block below.
 // Matches investment_app_memo.md §3.2 (Account/Position chain).
 //
-// delta_today in householdTotals is still a SYNTHETIC placeholder — real daily deltas need the
-// nightly snapshot pipeline (§15, Stage 8), which doesn't exist yet. delta_month_pct, however, is
-// now REAL: it's the actual change between the 2026-09-04 and 2026-09-05 full reprices below.
+// delta_today in householdTotals is REAL but currently 0 — no reprice has run since 2026-09-05
+// (PRICE_ASOF), so there's no fresh price movement to report; a true nonzero daily delta still
+// needs the nightly snapshot pipeline (§15, Stage 8) once repricing happens more than once a day.
+// delta_month_pct is REAL — September-to-date, chained from each reprice pass's own real,
+// new-capital-excluded % move. See the comment directly above householdTotals for the full method.
 
 export const accounts = {
   acc_vinod_mf: { id: 'acc_vinod_mf', member_id: 'mem_vinod', institution: 'CAMS/KFintech (HDFC MF, Tata MF)', type: 'Mutual funds' },
@@ -151,19 +153,28 @@ export const PRICE_ASOF = { date: '2026-09-05', usd_inr: 94.49, source: 'MF NAVs
 // ("keep this outside the overall wealth equation... I want to achieve 20Cr on top of this"). This
 // total is investable/liquid net worth, not total net worth including immovable property. See the
 // Debt & Immovable Assets tab for real estate's own figures.
+// PRICE_ASOF.date is 2026-09-05 — no repricing has happened since (today is 2026-09-06), so
+// delta_today/delta_today_pct are correctly 0: nothing has moved because no fresh AMFI/Yahoo pull
+// has been done today. Was previously a nonzero SYNTHETIC placeholder (₹42,300) that never traced
+// to any real computation — corrected 2026-09-06 after the user asked whether Today/This month
+// were accurate. Re-zero this pair (or replace with a real day-over-day figure) the next time a
+// reprice pass actually runs on today's date.
+//
+// delta_month_pct is the real September-to-date market move, chained from the two disclosed real
+// reprice-only percentages (each already excludes new capital/corrections, same convention as
+// before): 2026-09-02→2026-09-04 was +0.7148% (41,156,535 → 41,450,709.38, ex the new RSU lot),
+// and 2026-09-04→2026-09-05 was +0.1622% (42,898,410.44 → 42,967,974.40, ex that pass's new SIP
+// top-ups). Compounding real per-period returns (not dividing the raw end total by the raw start
+// total, which would wrongly count new capital as market gain) gives the correct MTD figure:
+// (1.007148 × 1.001622) − 1 = 0.878%. Previously this field only carried the latest single-day
+// move (0.1622%) mislabeled as "this month" — fixed the same day as the delta_today correction
+// above. Update by extending this same chain, not by re-basing to the newest reprice alone, once
+// a reprice pass happens later in September.
 export const householdTotals = {
   current_total: 43111545.04,
-  delta_today: 42300,        // SYNTHETIC — no daily snapshot pipeline yet (Stage 8)
-  delta_today_pct: 0.0011,   // SYNTHETIC
-  // delta_month_pct is the real 2026-09-04 → 2026-09-05 reprice move (42898410.44 → 42967974.40,
-  // i.e. every position repriced EXCLUDING the ₹1,72,738.38 of brand-new SIP top-up money added this
-  // pass — new capital going in isn't a market move, same reasoning as excluding the RSU vest and
-  // real estate/gold's first-tracked values from this figure previously). Left untouched by two later
-  // same-day changes for the same reason: pos_v_vxus (a brand-new holding) and the 2026-09-06 pass
-  // (2 new Edelweiss lots = new capital; the ICICI Next50 Direct/Regular split and the Axis Small Cap
-  // correction are a reclassification and a data-error fix, neither a market move) — current_total
-  // moves by each change's full effect, but delta_month_pct keeps measuring market movement only.
-  delta_month_pct: 0.001622, // REAL — (42967974.40 - 42898410.44) / 42898410.44
+  delta_today: 0,            // REAL — no reprice has run today; see note above
+  delta_today_pct: 0,        // REAL
+  delta_month_pct: 0.008781, // REAL — September-to-date, chained per the note above
   xirr: 0.152,               // SYNTHETIC — real per-position XIRR needs cashflow-dated lot history
   twr: 0.161,                // SYNTHETIC
   pending_pricing_count: 0,

@@ -167,6 +167,7 @@
   .delta { display: flex; align-items: center; gap: 4px; font-weight: var(--fw-bold); }
   .delta.up { color: var(--color-gain); }
   .delta.down { color: var(--color-loss); }
+  .delta.flat { color: var(--text-tertiary); }
   .delta-label { color: var(--text-tertiary); font-weight: var(--fw-medium); }
 
   .section-label {
@@ -522,29 +523,49 @@ function EmptyState({ icon, title, body }) {
 }
 function Skeleton({ width = '100%', height = '16px' }) { return html`<div class="skeleton" style=${{ width, height }} />`; }
 
+function shortDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()} ${d.toLocaleString('en-IN', { month: 'short' })}`;
+}
 function Sparkline({ data }) {
   const reducedMotion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
-  const w = 600, h = 90, pad = 4;
+  // viewBox width matches this card's real rendered width (~920px in the Today left column) rather
+  // than an arbitrary round number — with preserveAspectRatio="none", a viewBox far narrower than
+  // the actual render width non-uniformly stretches everything, including <text>, horizontally
+  // only; that's what was making the point labels look "elongated." Same bug/fix as GoalGrowthBars.
+  const w = 920, h = 150, padX = 10, padTop = 30, padBottom = 30;
   const values = data.map(d => d.value);
   const min = Math.min(...values), max = Math.max(...values);
   const range = max - min || 1;
   const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * (w - pad * 2) + pad;
-    const y = h - pad - ((d.value - min) / range) * (h - pad * 2);
+    const x = (i / (data.length - 1)) * (w - padX * 2) + padX;
+    const y = (h - padBottom) - ((d.value - min) / range) * (h - padTop - padBottom);
     return [x, y];
   });
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-  const fillPath = `${linePath} L${points[points.length - 1][0]},${h} L${points[0][0]},${h} Z`;
+  const fillPath = `${linePath} L${points[points.length - 1][0]},${h - padBottom + 4} L${points[0][0]},${h - padBottom + 4} Z`;
   const approxLen = points.reduce((acc, p, i) => i === 0 ? 0 : acc + Math.hypot(p[0] - points[i - 1][0], p[1] - points[i - 1][1]), 0);
+  // 7 evenly spaced markers (start, ~15-day steps, end) — labeling every one of 90 daily
+  // points would be unreadable, and would also overstate the precision of a series that's
+  // only real at its final point (see the disclosure note below).
+  const markerCount = 7;
+  const markerIdx = Array.from({ length: markerCount }, (_, k) => Math.round((k * (data.length - 1)) / (markerCount - 1)));
   return html`
     <div class="sparkline-wrap">
       <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
         <path class="sparkline-path sparkline-fill" d=${fillPath} fill="var(--accent)" stroke="none" />
         <path class="sparkline-path ${reducedMotion ? '' : 'animate'}" style=${{ '--dash-len': approxLen }} d=${linePath} />
+        ${markerIdx.map((i, k) => {
+          const anchor = k === 0 ? 'start' : k === markerIdx.length - 1 ? 'end' : 'middle';
+          return html`
+          <g key=${i}>
+            <circle cx=${points[i][0]} cy=${points[i][1]} r="2.5" fill="var(--accent)" />
+            <text x=${points[i][0]} y=${points[i][1] - 11} font-size="9" font-weight="650" text-anchor=${anchor} fill="var(--text-primary)">${formatINR(data[i].value)}</text>
+            <text x=${points[i][0]} y=${points[i][1] + 18} font-size="7" text-anchor=${anchor} fill="var(--text-tertiary)">${shortDate(data[i].date)}</text>
+          </g>
+        `; })}
       </svg>
-      <div style="display:flex;justify-content:space-between;font-size:var(--fs-micro);color:var(--text-tertiary);margin-top:4px;">
-        <span>${data[0].date}</span><span>90 days</span><span>${data[data.length - 1].date}</span>
-      </div>
+      <div class="trend-note">Illustrative day-by-day path — only today's total (${formatINR(data[data.length - 1].value)}) is real; the nightly snapshot pipeline needed for true daily history doesn't exist yet (Stage 8).</div>
     </div>
   `;
 }
@@ -670,7 +691,7 @@ function currencyMajority(positionList) {
 }
 function buildIllustrativeTrend(startValue, endValue, days = 90, seed = 7) {
   const rand = seededRandom(seed);
-  const today = new Date('2026-09-05T00:00:00');
+  const today = new Date('2026-09-06T00:00:00');
   let value = startValue;
   const series = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -707,7 +728,7 @@ function whatChangedCards() {
 }
 
 function AgendaList() {
-  const today = new Date('2026-09-05T00:00:00');
+  const today = new Date('2026-09-06T00:00:00');
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(d.getDate() + i);
     const iso = toLocalISO(d);
@@ -836,6 +857,7 @@ function TodayScreen({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   useEffect(() => { const t = setTimeout(() => setLoading(false), 350); return () => clearTimeout(t); }, []);
   const cards = whatChangedCards();
+  const todayFlat = householdTotals.delta_today === 0;
   const up = householdTotals.delta_today >= 0;
   return html`
     <div class="today-grid">
@@ -843,7 +865,7 @@ function TodayScreen({ onNavigate }) {
         <div>
           ${loading ? html`<${Skeleton} width="280px" height="40px" />` : html`<div class="hero-value tabular">${formatFullINR(householdTotals.current_total)}</div>`}
           <div class="hero-deltas tabular">
-            <span class="delta ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${formatINR(Math.abs(householdTotals.delta_today))} <span class="delta-label">today</span></span>
+            <span class="delta ${todayFlat ? 'flat' : (up ? 'up' : 'down')}">${todayFlat ? 'No new pricing yet' : `${up ? '▲' : '▼'} ${formatINR(Math.abs(householdTotals.delta_today))}`} <span class="delta-label">today</span></span>
             <span class="delta ${householdTotals.delta_month_pct >= 0 ? 'up' : 'down'}">${householdTotals.delta_month_pct >= 0 ? '▲' : '▼'} ${formatPct(Math.abs(householdTotals.delta_month_pct))} <span class="delta-label">this month</span></span>
           </div>
           ${loading ? html`<div style="margin-top:var(--space-6)"><${Skeleton} height="90px" /></div>` : html`<${Sparkline} data=${netWorthHistory} />`}
