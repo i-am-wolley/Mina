@@ -705,6 +705,45 @@ function buildIllustrativeTrend(startValue, endValue, days = 90, seed = 7) {
   return series;
 }
 
+// Yearly invested-vs-growth waterfall for Insights' Trend section — replaces the old illustrative
+// daily random walk with "each year since the beginning of investing, how much was invested that
+// year vs. how much it grew," cumulating to today's real total. Same "illustrative path, real
+// endpoints" discipline MFInsightsPanel's growth chart already uses: today's real cost basis and
+// current value are the only real numbers here (no per-year contribution ledger exists outside
+// EPF), so invested is spread on a straight-line yearly schedule from 2018 (the earliest real record
+// on file — EPFO's first FY close) to today, and the annual growth rate is SOLVED (binary search,
+// same technique GoalPlanScreen uses for requiredSip) so the simulated path lands exactly on the
+// real current value — never an invented growth number. Renders via GoalGrowthBars (reused as-is;
+// it already takes {year, value, invested, growth} rows and needs no scope-specific logic).
+const INVESTING_START_YEAR = 2018;
+const CURRENT_YEAR = 2026;
+function historicalYearRows(scope) {
+  const totalInvested = scope.scopePositions.reduce((s, p) => s + impliedCostBasis(p), 0);
+  const totalValue = scope.scopeTotal;
+  const years = [];
+  for (let y = INVESTING_START_YEAR; y <= CURRENT_YEAR; y++) years.push(y);
+  const investedByYear = years.map((y, i) => totalInvested * (i + 1) / years.length);
+  function simulate(rate) {
+    let value = 0;
+    const values = [];
+    for (let i = 0; i < years.length; i++) {
+      const contribution = investedByYear[i] - (i > 0 ? investedByYear[i - 1] : 0);
+      value = value * (1 + rate) + contribution;
+      values.push(value);
+    }
+    return values;
+  }
+  let lo = -0.9, hi = 5;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (simulate(mid)[years.length - 1] < totalValue) lo = mid; else hi = mid;
+  }
+  const values = simulate((lo + hi) / 2);
+  values[values.length - 1] = totalValue;
+  investedByYear[investedByYear.length - 1] = totalInvested;
+  return years.map((y, i) => ({ year: y, value: values[i], invested: investedByYear[i], growth: Math.max(0, values[i] - investedByYear[i]) }));
+}
+
 // ============================================================
 // 10  Screen: Today
 // ============================================================
@@ -1627,6 +1666,7 @@ function MFInsightsPanel({ scope }) {
 // cross-class comparison, since those only make sense at that scope.
 function GeneralInsightsPanel({ scope }) {
   const trend = useMemo(() => trendForScope(scope), [scope.label, scope.scopeTotal]);
+  const yearRows = useMemo(() => historicalYearRows(scope), [scope.label, scope.scopeTotal]);
   const insights = useMemo(() => computeScopedInsights(scope), [scope.label, scope.classId, scope.memberId, scope.selected?.id]);
   const sectorData = useMemo(() => sectorBreakdownData(scope.scopePositions), [scope.label]);
   const techScan = useMemo(() => technicalScanData(scope.scopePositions), [scope.label]);
@@ -1660,19 +1700,19 @@ function GeneralInsightsPanel({ scope }) {
         </div>
       ` : html`
         <div class="span-2">
-          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Trend</div>
+          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Trend — invested vs. growth, year by year</div>
           <${Card}>
             <div class="trend-stats-row">
               <div><div class="trend-stat-value tabular ${trend.ownReturn >= 0 ? 'up' : 'down'}">${pctOrDash(trend.ownReturn)}</div><div class="trend-stat-label">${trend.ownReturnLabel}</div></div>
               ${trend.benchmark ? html`<div><div class="trend-stat-value tabular ${benchReturn >= 0 ? 'up' : 'down'}">${pctOrDash(benchReturn)}</div><div class="trend-stat-label">${trend.benchmark.label} · trailing 3mo</div></div>` : ''}
             </div>
-            <${TrendChart} series=${trend.series} benchSeries=${trend.benchSeries} />
+            <${GoalGrowthBars} rows=${yearRows} height=${240} />
             <div class="trend-legend">
-              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--accent)"></span>${scope.label}</span>
-              ${trend.benchmark ? html`<span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--lilac-500)"></span>${trend.benchmark.label}</span>` : ''}
+              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--bronze-500)"></span>Invested</span>
+              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--sage-500)"></span>Growth</span>
             </div>
             <div class="trend-note">
-              ${trend.isReal ? 'Real yearly EPF balances from EPFO passbooks (2018–2026).' : `Illustrative — smoothed from cost basis to today's value; real daily price history needs Stage 8's snapshot pipeline. ${trend.benchmark ? `The ${trend.benchmark.label} line is real market data (Yahoo Finance, 3-month), shown for context — not a precise same-period comparison.` : ''}`}
+              Illustrative — only the endpoints are real (today's cost basis and current value). No per-year contribution ledger exists yet outside EPF (Stage 8), so invested is spread evenly across the years since ${INVESTING_START_YEAR} (the household's earliest real record, EPFO's first FY close) and the growth rate is solved to land exactly on today's real total — not an invented number. ${trend.benchmark ? `For context, real market data: ${trend.benchmark.label} returned ${pctOrDash(benchReturn)} trailing 3 months.` : ''}
             </div>
           <//>
         </div>
