@@ -51,6 +51,14 @@ Section-banner order per memo §17.2. Update the ✅ column as sections are actu
 | 16 | Router · **top nav** shell (replaced sidebar 2026-08-03, which had replaced tab-bar+header) · household switcher | ✅ desktop shell (`TopNav` + `.content`); switcher is visual-only, doesn't filter data yet |
 | 17 | Mount | ✅ |
 
+## Sixth full reprice pass (2026-09-19)
+
+Same two-source method as every pass before it — AMFI's `NAVAll.txt` (curl'd directly, grepped by all 11 unique MF ISINs, dated 18-Sep-2026 for most schemes, 19-Sep-2026 for the Edelweiss Liquid Fund — the usual forward-dated liquid-fund convention, not an error) and Yahoo Finance's `v8/finance/chart/<TICKER>` endpoint (curl'd per-ticker with a browser `User-Agent` header) for all 26 stock/RSU/gold/VXUS positions plus USD/INR (95.88, was 95.55). No new capital or corrections this pass — purely a price refresh, a 6-day gap since the fifth pass (2026-09-13).
+
+`current_total`: ₹4,25,63,240.12 → **₹4,27,28,038.61** (+₹1,64,798.49, +0.3872% for this period). `delta_today`/`delta_today_pct` stay 0 by the same convention as the fifth pass — a 6-day-old baseline still can't honestly be called "today's" move. `delta_month_pct` extends the September chain to 4 links: (1.007148 × 1.001622 × 0.987282 × 1.003872) − 1 = **-0.019%** — essentially flat month-to-date, a real number, not smoothed. Every stock/RSU/gold `tech` block (52-week range, day range, volume) in `instruments.js` refreshed alongside the price.
+
+**Verified in-browser 2026-09-19**: `node --check` clean on both `positions.js` and `instruments.js`; regex-summed all 43 `current_value` fields in `positions.js` against the written `householdTotals.current_total` — exact match (₹4,27,28,038.61) before publishing. Loaded via a local `python -m http.server`: Today shows ₹4,27,28,039 / "+0.0% this month"; Portfolio's asset-class bars and holdings table render the new NAVs (e.g. HDFC BSE Sensex Direct 711.29, Axis Small Cap 137.63) and total ₹4.27 Cr; Insights' household waterfall's "Today" bar shows ₹3.21 Cr invested / ₹1.06 Cr growth = ₹4.27 Cr, consistent with the household hero. No console errors on Today, Portfolio, or Insights.
+
 ## Yearly invested-vs-growth waterfall replaces the Trend chart, plus a fifth full reprice pass (2026-09-13)
 
 Two asks in one message: repopulate Insights' "Trend" chart as a year-by-year invested-vs-growth waterfall instead of the illustrative daily line, and refresh every NAV/price across the household.
