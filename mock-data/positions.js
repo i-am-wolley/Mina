@@ -54,7 +54,7 @@ export const positions = [
   { id: 'pos_v_fd_1', account_id: 'acc_vinod_fd', instrument_id: 'inst_shriram_fd', current_value: 509000, cost_basis: 500000, unrealized_gain: 9000 },
   { id: 'pos_v_fd_2', account_id: 'acc_vinod_fd', instrument_id: 'inst_hdfc_fd_1', current_value: 1227000, cost_basis: 1000000, unrealized_gain: 227000 },
   { id: 'pos_v_fd_3', account_id: 'acc_vinod_fd', instrument_id: 'inst_hdfc_fd_2', current_value: 1218000, cost_basis: 1000000, unrealized_gain: 218000 },
-  { id: 'pos_v_epf', account_id: 'acc_vinod_epf', instrument_id: 'inst_epf_vinod', current_value: 5313080, cost_basis: 5313080, unrealized_gain: 0 },
+  { id: 'pos_v_epf', account_id: 'acc_vinod_epf', instrument_id: 'inst_epf_vinod', current_value: 5452028, cost_basis: 5452028, unrealized_gain: 0 },
 
   // Vinod — US stocks (Alpaca). nav is stored in INR (real USD price × spot USD/INR) — units already
   // reflect real post-split share counts, re-verified 2026-09-02 against Yahoo Finance.
@@ -166,8 +166,16 @@ export const PRICE_ASOF = { date: '2026-09-19', usd_inr: 95.88, source: 'MF NAVs
 // Compounding real per-period returns (not dividing the raw end total by the raw start total, which
 // would wrongly count new capital as market gain) gives the correct MTD figure:
 // (1.007148 × 1.001622 × 0.987282 × 1.003872) − 1 = -0.019%.
+//
+// 2026-09-19, later same day: Vinod's EPF passbook (PYKRP14098760000010121_2026.pdf) was updated with
+// 3 more posted contribution months (Jun/Jul/Aug-2026 wage months, credited Jul/Aug/Sep-2026) — real
+// payroll contributions, not a market move, so this is layered on top of current_total without
+// touching delta_month_pct (same "new money isn't a market move" convention as every RSU vest/SIP
+// top-up before it). pos_v_epf: ₹53,13,080 → ₹54,52,028 (+₹1,38,948 = employee 31,869×3 + 34,737×3 for
+// each half, matching the employer side and the passbook's own "Total Contributions for the year"
+// line exactly). mock-data/epf-history.js's running-balance entry updated to match.
 export const householdTotals = {
-  current_total: 42728038.61,
+  current_total: 42866986.61,
   delta_today: 0,             // REAL — see note above; no reprice ran "today," only a 6-day-old one
   delta_today_pct: 0,         // REAL
   delta_month_pct: -0.000192, // REAL — September-to-date, chained per the note above

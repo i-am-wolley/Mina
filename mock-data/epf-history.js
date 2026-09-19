@@ -13,6 +13,6 @@ export const epfHistoryVinod = [
   { fy_end: '2024-03-31', employee: 1484134, employer: 1484134, total: 2968268 },
   { fy_end: '2025-03-31', employee: 1967435, employer: 1968173, total: 3935608 },
   { fy_end: '2026-03-31', employee: 2524956, employer: 2527436, total: 5052392 },
-  // Current running balance per the latest passbook (contributions posted through Jun-2026):
-  { fy_end: '2026-07-current', employee: 2655300, employer: 2657780, total: 5313080 },
+  // Current running balance per the latest passbook (contributions posted through Aug-2026):
+  { fy_end: '2026-09-current', employee: 2724774, employer: 2727254, total: 5452028 },
 ];
