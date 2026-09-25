@@ -326,6 +326,11 @@
   .holdings-table tbody tr.data-row.selected td { background: var(--accent-wash); }
   .holding-name-cell { font-weight: var(--fw-semibold); }
   .holding-sub-cell { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+  .expand-toggle { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-right: var(--space-2); border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--text-secondary); font-weight: var(--fw-bold); font-size: 12px; line-height: 1; }
+  .holdings-table tbody tr.sub-row td { background: var(--surface-sunken); }
+  .holdings-table tbody tr.sub-row:hover td { background: color-mix(in srgb, var(--accent) 5%, var(--surface-sunken)); }
+  .holdings-table tbody tr.sub-row .holding-name-cell { font-weight: var(--fw-medium); padding-left: var(--space-6); }
+  .sub-row-owner { color: var(--text-secondary); }
   .gain-cell.up { color: var(--color-gain); font-weight: var(--fw-bold); }
   .gain-cell.down { color: var(--color-loss); font-weight: var(--fw-bold); }
   .gain-cell.flat { color: var(--text-tertiary); }
@@ -982,6 +987,14 @@ function avgCostOf(p) {
   return cb != null ? cb / p.units : null;
 }
 function pctOrDash(v, digits = 1) { return v == null ? '—' : formatPct(v, digits); }
+// Groups positions that are literally the same fund/instrument held in more than one place —
+// same ISIN (e.g. Keerthana's 2 Parag Parikh folios, or the same Direct-plan fund held by both
+// Vinod and Keerthana) or, when no ISIN exists (RSU/FD/EPF), the same instrument_id (e.g. the 2
+// AB InBev RSU vest lots). Used by HoldingsTable to fold these into one combined row with a "+"
+// to expand back into the individual lots — real multi-lot/multi-owner detail, not hidden, just
+// collapsed by default so the same fund name doesn't appear to be a confusing duplicate.
+function instrumentIdentityKey(p) { return instruments[p.instrument_id]?.isin || p.instrument_id; }
+function memberNameOf(p) { const acc = accounts[p.account_id]; return acc ? members[acc.member_id]?.name : null; }
 
 // ---- Reusable, real-data-backed insight builders (household scope) --------
 function sumByInstruments(ids) { return ALL_PRICED.filter(p => ids.includes(p.instrument_id)).reduce((s, p) => s + p.current_value, 0); }
@@ -1530,7 +1543,36 @@ function ScopeHeroCard({ scope }) {
   `;
 }
 
-function HoldingsTable({ classId, filtered, total, sortKey, sortDir, onSort, selectedId, onSelectRow }) {
+// Folds a list of positions into display rows: a position sharing its identity key (same ISIN,
+// or same instrument_id when there's no ISIN) with at least one other survives as a single merged
+// row (units/invested/value summed, NAV/avgCost/gain% recomputed off the combined totals) with
+// `lots` attached for the expand toggle; a position with no sibling passes through unchanged.
+function mergedRowsFor(positionList) {
+  const byKey = new Map();
+  positionList.forEach(p => {
+    const key = instrumentIdentityKey(p);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(p);
+  });
+  return [...byKey.values()].map(lots => {
+    if (lots.length === 1) return lots[0];
+    const inst = instruments[lots[0].instrument_id];
+    const units = lots.every(p => p.units != null) ? lots.reduce((s, p) => s + p.units, 0) : null;
+    const investedParts = lots.map(realCostBasis);
+    const invested = investedParts.every(v => v != null) ? investedParts.reduce((s, v) => s + v, 0) : null;
+    const current_value = lots.reduce((s, p) => s + p.current_value, 0);
+    return {
+      id: `merged:${instrumentIdentityKey(lots[0])}`,
+      instrument_id: lots[0].instrument_id,
+      units, current_value,
+      cost_basis: invested, // lets realCostBasis()/gainPctOf() work unchanged on the merged row
+      nav: lots.find(p => p.nav != null)?.nav ?? null,
+      isMerged: true,
+      lots,
+    };
+  });
+}
+function HoldingsTable({ classId, filtered, total, sortKey, sortDir, onSort, selectedId, onSelectRow, expandedKeys, onToggleExpand }) {
   const groups = classId === 'all' ? groupByClassBucket(filtered).groups.map(g => ({ key: g.key, value: g.value, weight: g.weight, positions: g.positions })) : [{ key: classLabel(classId), value: total, weight: 1, positions: filtered }];
   return html`
     <div class="table-wrap">
@@ -1538,33 +1580,46 @@ function HoldingsTable({ classId, filtered, total, sortKey, sortDir, onSort, sel
         <thead><tr>${TABLE_COLUMNS.map(c => html`<th key=${c.key} class=${c.num ? 'num' : ''} onClick=${() => onSort(c.key)}>${c.label}${sortKey === c.key ? html`<span class="sort-arrow">${sortDir === 'desc' ? '▼' : '▲'}</span>` : ''}</th>`)}</tr></thead>
         <tbody>
           ${groups.flatMap(g => {
-            const sorted = [...g.positions].sort((a, b) => {
+            const displayRows = mergedRowsFor(g.positions);
+            const sorted = [...displayRows].sort((a, b) => {
               const av = sortValue(a, sortKey, total), bv = sortValue(b, sortKey, total);
               const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
               return sortDir === 'desc' ? -cmp : cmp;
             });
             const groupInvested = g.positions.reduce((s, p) => s + (realCostBasis(p) || 0), 0);
+            function renderRow(p, sub) {
+              const inst = instruments[p.instrument_id];
+              const gp = gainPctOf(p);
+              const avgCost = avgCostOf(p);
+              const invested = realCostBasis(p);
+              const weight = total ? p.current_value / total : 0;
+              const isExpanded = p.isMerged && expandedKeys.has(p.id);
+              const ownerLabel = sub ? (memberNameOf(p) || instruments[p.instrument_id]?.source || '') : null;
+              return html`
+                <tr key=${p.id} class="data-row ${sub ? 'sub-row' : ''} ${selectedId === p.id ? 'selected' : ''}" onClick=${() => p.isMerged ? onToggleExpand(p.id) : onSelectRow(p.id)}>
+                  <td>
+                    <div class="holding-name-cell">
+                      ${p.isMerged ? html`<span class="expand-toggle">${isExpanded ? '−' : '+'}</span>` : ''}
+                      ${sub ? html`<span class="sub-row-owner">${ownerLabel}</span>` : inst?.name}
+                    </div>
+                    <div class="holding-sub-cell">${sub ? inst?.name : (p.isMerged ? `${p.lots.length} holdings` : inst?.l3)}</div>
+                  </td>
+                  <td class="num tabular">${p.units != null ? formatNum(p.units, p.units < 100 ? 4 : 2) : '—'}</td>
+                  <td class="num tabular">${p.nav != null ? formatNum(p.nav, 2) : '—'}</td>
+                  <td class="num tabular">${avgCost != null ? formatNum(avgCost, 2) : '—'}</td>
+                  <td class="num tabular">${invested != null ? formatINR(invested) : '—'}</td>
+                  <td class="num tabular">${formatINR(p.current_value)}</td>
+                  <td class="num tabular gain-cell ${gp == null ? 'flat' : gp >= 0 ? 'up' : 'down'}">${gp == null ? '—' : formatPct(gp)}</td>
+                  <td class="num tabular">${(weight * 100).toFixed(1)}%</td>
+                </tr>
+              `;
+            }
             const rows = [
               classId === 'all' ? html`<tr class="group-row" key=${g.key + '-hdr'}><td colspan="2">${g.key}</td><td class="num"></td><td class="num"></td><td class="num tabular">${groupInvested ? formatINR(groupInvested) : ''}</td><td class="num tabular">${formatINR(g.value)}</td><td class="num"></td><td class="num tabular">${(g.weight * 100).toFixed(1)}%</td></tr>` : null,
-              ...sorted.map(p => {
-                const inst = instruments[p.instrument_id];
-                const gp = gainPctOf(p);
-                const avgCost = avgCostOf(p);
-                const invested = realCostBasis(p);
-                const weight = total ? p.current_value / total : 0;
-                return html`
-                  <tr key=${p.id} class="data-row ${selectedId === p.id ? 'selected' : ''}" onClick=${() => onSelectRow(p.id)}>
-                    <td><div class="holding-name-cell">${inst?.name}</div><div class="holding-sub-cell">${inst?.l3}</div></td>
-                    <td class="num tabular">${p.units != null ? formatNum(p.units, p.units < 100 ? 4 : 2) : '—'}</td>
-                    <td class="num tabular">${p.nav != null ? formatNum(p.nav, 2) : '—'}</td>
-                    <td class="num tabular">${avgCost != null ? formatNum(avgCost, 2) : '—'}</td>
-                    <td class="num tabular">${invested != null ? formatINR(invested) : '—'}</td>
-                    <td class="num tabular">${formatINR(p.current_value)}</td>
-                    <td class="num tabular gain-cell ${gp == null ? 'flat' : gp >= 0 ? 'up' : 'down'}">${gp == null ? '—' : formatPct(gp)}</td>
-                    <td class="num tabular">${(weight * 100).toFixed(1)}%</td>
-                  </tr>
-                `;
-              }),
+              ...sorted.flatMap(p => [
+                renderRow(p, false),
+                ...(p.isMerged && expandedKeys.has(p.id) ? p.lots.map(l => renderRow(l, true)) : []),
+              ]),
             ].filter(Boolean);
             return rows;
           })}
@@ -1812,6 +1867,8 @@ function PortfolioScreen({ onNavigate }) {
   const [selectedId, setSelectedId] = useState(null);
   const [sortKey, setSortKey] = useState('value');
   const [sortDir, setSortDir] = useState('desc');
+  const [expandedKeys, setExpandedKeys] = useState(() => new Set());
+  function toggleExpand(key) { setExpandedKeys(prev => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; }); }
 
   const filtered = useMemo(() => ALL_PRICED.filter(p => {
     if (classId !== 'all' && classOf(p) !== classId) return false;
@@ -1852,7 +1909,7 @@ function PortfolioScreen({ onNavigate }) {
           </select>
         </div>
       </div>
-      <${HoldingsTable} classId=${classId} filtered=${filtered} total=${total} sortKey=${sortKey} sortDir=${sortDir} onSort=${onSort} selectedId=${selectedId} onSelectRow=${selectRow} />
+      <${HoldingsTable} classId=${classId} filtered=${filtered} total=${total} sortKey=${sortKey} sortDir=${sortDir} onSort=${onSort} selectedId=${selectedId} onSelectRow=${selectRow} expandedKeys=${expandedKeys} onToggleExpand=${toggleExpand} />
       <div class="pending-note">Click a row to see its own value and return above. For deep analysis by asset class — growth, composition, cost & tax, rebalancing, news — open <span class="inline-link" onClick=${() => onNavigate('insights')}>Insights</span>.</div>
     </div>
   `;
