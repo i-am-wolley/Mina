@@ -327,6 +327,22 @@
   .holding-name-cell { font-weight: var(--fw-semibold); }
   .holding-sub-cell { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
   .expand-toggle { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-right: var(--space-2); border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--text-secondary); font-weight: var(--fw-bold); font-size: 12px; line-height: 1; }
+  .holding-row { border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3); cursor: pointer; background: var(--surface-card); }
+  .holding-row-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+  .holding-row-name { font-weight: var(--fw-bold); font-size: 13.5px; display: flex; align-items: center; gap: var(--space-2); }
+  .holding-row-sub { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; }
+  .holding-row-value { text-align: right; flex-shrink: 0; }
+  .holding-row-badge { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+  .chip { background: var(--surface-sunken); border-radius: var(--radius-pill); padding: 4px 10px; font-size: 11.5px; color: var(--text-secondary); }
+  .chip b { color: var(--text-primary); }
+  .holding-risk-list { margin: var(--space-3) 0 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); }
+  .holding-risk-list li { margin-bottom: 3px; }
+  .lt-table-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--border-hairline); }
+  .lt-table-row:last-child { border-bottom: none; }
+  .lt-table-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .overlap-tag { font-size: 10px; padding: 1px 6px; border-radius: var(--radius-pill); background: var(--terracotta-100, var(--surface-sunken)); color: var(--terracotta-500, var(--text-secondary)); margin-left: var(--space-2); }
+  .sort-select-row { display: flex; justify-content: flex-end; gap: var(--space-3); margin-bottom: var(--space-5); }
   .holdings-table tbody tr.sub-row td { background: var(--surface-sunken); }
   .holdings-table tbody tr.sub-row:hover td { background: color-mix(in srgb, var(--accent) 5%, var(--surface-sunken)); }
   .holdings-table tbody tr.sub-row .holding-name-cell { font-weight: var(--fw-medium); padding-left: var(--space-6); }
@@ -466,6 +482,10 @@ import { creditCardTransactions } from './mock-data/credit-card-transactions.js'
 import { monthlyBudget, CATEGORY_META } from './mock-data/budget.js';
 import { liabilities } from './mock-data/liabilities.js';
 import { realEstate } from './mock-data/real-estate.js';
+import { INSTRUMENT_RESEARCH } from './mock-data/research-profiles.js';
+import { FUND_LOOKTHROUGH, FUND_LOOKTHROUGH_ALIAS } from './mock-data/fund-holdings.js';
+import { SECTOR_PARENT_MAP, SECTOR_OUTLOOK, INDEX_PE_BENCHMARKS } from './mock-data/sector-outlook.js';
+import { GEOGRAPHY_OUTLOOK } from './mock-data/geography-outlook.js';
 
 // ============================================================
 // 07  Formatters — currency, %, dates, locale
@@ -516,6 +536,8 @@ function Icon({ name, size = 16, style = {} }) {
   if (name === 'sparkle') return svg(html`<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.5 2.5M16 16l2.5 2.5M18.5 5.5L16 8M8 16l-2.5 2.5" />`);
   if (name === 'link') return svg(html`<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />`);
   if (name === 'trendUp') return svg(html`<polyline points="3,17 9,11 13,15 21,6" /><polyline points="15,6 21,6 21,12" />`);
+  if (name === 'globe') return svg(html`<circle cx="12" cy="12" r="9" /><ellipse cx="12" cy="12" rx="4" ry="9" /><line x1="3" y1="12" x2="21" y2="12" /><path d="M5 6.5c1.8 1.3 4.3 2 7 2s5.2-.7 7-2" /><path d="M5 17.5c1.8-1.3 4.3-2 7-2s5.2.7 7 2" />`);
+  if (name === 'layers') return svg(html`<polygon points="12,3 21,8 12,13 3,8" /><polyline points="3,13 12,18 21,13" /><polyline points="3,18 12,23 21,18" />`);
   return null;
 }
 
@@ -1043,7 +1065,241 @@ function insightElssLockin() {
   if (!p) return null;
   return { id: 'elss-lockin', icon: 'calendar', tag: 'Tax', title: 'A tax-saving fund that may no longer be saving tax', body: `Axis ELSS SIPs go back to 2017 — the oldest units are years past the 3-year lock-in, and the position carries a <b>${formatINR(p.unrealized_gain)}</b> unrealised gain. Worth checking if 80C is still the reason to keep contributing.` };
 }
-const PORTFOLIO_INSIGHTS = [insightSemiTheme, insightUsNoFund, insightEmployerConc, insightLiquidity, insightCostDrag, insightPpfasUs, insightNbfcFd, insightElssLockin];
+// ---- Deep-analysis aggregators — real research (research-profiles.js / fund-holdings.js /
+// sector-outlook.js / geography-outlook.js) joined against real holdings. Every number here is
+// either a real position value or a disclosed, sourced research constant, aggregated or weighted
+// — never invented (AI boundaries). See Base resources/deep-analysis-methodology.md for the
+// research method and how to refresh this data later.
+const EQUITY_LIKE_L3S = ['Domestic stock', 'Foreign stock', 'ESOP/RSU/SAR', 'Index fund', 'Active MF'];
+function researchFor(instrumentId) { return INSTRUMENT_RESEARCH[instrumentId] || null; }
+function lookthroughFor(instrumentId) {
+  const key = FUND_LOOKTHROUGH_ALIAS[instrumentId] || instrumentId;
+  return FUND_LOOKTHROUGH[key] || null;
+}
+function parentSectorOf(sector) {
+  if (!sector) return null;
+  if (SECTOR_PARENT_MAP[sector]) return SECTOR_PARENT_MAP[sector];
+  const s = sector.toLowerCase();
+  if (s.includes('bank') || s.includes('nbfc') || s.includes('financ') || s.includes('insurance') || s.includes('capital market') || s.includes('asset management')) return 'Banking & Financials';
+  if (s.includes('pharma') || s.includes('health')) return 'Healthcare & Pharma';
+  if (s.includes('component')) return 'Auto Components';
+  if (s.includes('auto') || s.includes('motor')) return 'Automobiles';
+  if (s.includes('cash') || s.includes('treps') || s.includes('repo')) return 'Cash / Debt';
+  return sector; // unmapped — kept as its own bucket rather than silently lumped into "Other"
+}
+const COUNTRY_UNCLASSIFIED_LABEL = 'Unclassified (beyond fund top 10 / no look-through data)';
+
+// Merges direct stock/RSU value with the value implied by each fund's disclosed top-10 weight,
+// grouped by company (ISIN match, falling back to normalized name) — the "what do we actually
+// own, in total" view. Weight is against household net worth, so this reads as real concentration.
+function normalizeCompanyName(name) { return name.toLowerCase().replace(/\s+ltd\.?$/i, '').replace(/[^a-z0-9]/g, ''); }
+function trueStockExposure(scopePositions) {
+  const rows = new Map();
+  function keyFor(name, isin) { return isin || normalizeCompanyName(name); }
+  scopePositions.forEach(p => {
+    const inst = instruments[p.instrument_id];
+    if (!inst) return;
+    if (['Domestic stock', 'Foreign stock', 'ESOP/RSU/SAR'].includes(inst.l3)) {
+      const key = keyFor(inst.name, inst.isin);
+      if (!rows.has(key)) rows.set(key, { name: inst.name, directValue: 0, lookthroughValue: 0, sources: [], sector: inst.sector, country: researchFor(p.instrument_id)?.country || null, marketCapTier: researchFor(p.instrument_id)?.marketCapTier || null });
+      const row = rows.get(key);
+      row.directValue += p.current_value;
+      row.sources.push({ type: 'direct', label: memberNameOf(p) || 'Direct holding', value: p.current_value });
+    } else if (['Index fund', 'Active MF'].includes(inst.l3)) {
+      const lt = lookthroughFor(p.instrument_id);
+      if (!lt || !lt.top10) return;
+      lt.top10.forEach(h => {
+        if (!h.sector || h.sector.includes('Cash equivalent')) return;
+        const key = keyFor(h.name, h.isin);
+        const impliedValue = p.current_value * h.weight;
+        if (!rows.has(key)) rows.set(key, { name: h.name, directValue: 0, lookthroughValue: 0, sources: [], sector: h.sector, country: h.country, marketCapTier: h.marketCapTier });
+        const row = rows.get(key);
+        row.lookthroughValue += impliedValue;
+        row.sources.push({ type: 'fund', label: `${lt.fundName} (${(h.weight * 100).toFixed(1)}% of fund)`, value: impliedValue });
+      });
+    }
+  });
+  const denom = householdTotals.current_total;
+  const list = [...rows.values()].map(r => ({ ...r, totalValue: r.directValue + r.lookthroughValue, overlapFlag: r.directValue > 0 && r.lookthroughValue > 0 })).sort((a, b) => b.totalValue - a.totalValue);
+  list.forEach(r => { r.weight = denom ? r.totalValue / denom : 0; });
+  const unclassifiedLongTail = scopePositions.filter(p => ['Index fund', 'Active MF'].includes(instruments[p.instrument_id]?.l3)).reduce((s, p) => {
+    const lt = lookthroughFor(p.instrument_id);
+    if (!lt || !lt.top10) return s + p.current_value;
+    const covered = lt.top10.reduce((cs, h) => cs + (h.sector && !h.sector.includes('Cash equivalent') ? h.weight : 0), 0);
+    return s + p.current_value * (1 - covered);
+  }, 0);
+  return { rows: list, unclassifiedLongTail };
+}
+
+// Sector/geography exposure, look-through aware: direct stocks use their real `sector`/
+// researched `country`; funds distribute their value across each disclosed top-10 holding's
+// sector/country weighted by that holding's real weight; whatever isn't in the top 10 (or has
+// no look-through data at all) is bucketed as Unclassified rather than guessed. Only counts
+// equity-like positions (stocks/RSU/funds) — FD/EPF/Gold have no sector/country concept.
+function sectorExposureLookthrough(scopePositions) {
+  const equityLike = scopePositions.filter(p => EQUITY_LIKE_L3S.includes(instruments[p.instrument_id]?.l3));
+  const scopeTotal = equityLike.reduce((s, p) => s + p.current_value, 0);
+  const bySector = new Map();
+  let unclassified = 0;
+  equityLike.forEach(p => {
+    const inst = instruments[p.instrument_id];
+    if (['Domestic stock', 'Foreign stock', 'ESOP/RSU/SAR'].includes(inst.l3)) {
+      const parent = parentSectorOf(inst.sector) || 'Unclassified';
+      bySector.set(parent, (bySector.get(parent) || 0) + p.current_value);
+    } else {
+      const lt = lookthroughFor(p.instrument_id);
+      if (lt && lt.top10) {
+        let covered = 0;
+        lt.top10.forEach(h => {
+          if (!h.sector || h.sector.includes('Cash equivalent')) return;
+          const parent = parentSectorOf(h.sector) || 'Unclassified';
+          bySector.set(parent, (bySector.get(parent) || 0) + p.current_value * h.weight);
+          covered += h.weight;
+        });
+        unclassified += p.current_value * (1 - covered);
+      } else {
+        unclassified += p.current_value;
+      }
+    }
+  });
+  if (unclassified > 0.5) bySector.set('Unclassified / Other', (bySector.get('Unclassified / Other') || 0) + unclassified);
+  const bars = [...bySector.entries()].sort((a, b) => b[1] - a[1]).map(([label, value], i) => ({ label, value, pct: scopeTotal ? value / scopeTotal : 0, color: LENS_PALETTE[i % LENS_PALETTE.length] }));
+  return { bars, total: scopeTotal };
+}
+function geographyExposure(scopePositions) {
+  const equityLike = scopePositions.filter(p => EQUITY_LIKE_L3S.includes(instruments[p.instrument_id]?.l3));
+  const scopeTotal = equityLike.reduce((s, p) => s + p.current_value, 0);
+  const byCountry = new Map();
+  let unclassified = 0;
+  equityLike.forEach(p => {
+    const inst = instruments[p.instrument_id];
+    if (['Domestic stock', 'Foreign stock', 'ESOP/RSU/SAR'].includes(inst.l3)) {
+      const country = researchFor(p.instrument_id)?.country || (inst.currency === 'USD' ? 'United States' : 'India');
+      byCountry.set(country, (byCountry.get(country) || 0) + p.current_value);
+    } else {
+      const lt = lookthroughFor(p.instrument_id);
+      if (lt && lt.top10) {
+        let covered = 0;
+        lt.top10.forEach(h => {
+          if (!h.country) return;
+          byCountry.set(h.country, (byCountry.get(h.country) || 0) + p.current_value * h.weight);
+          covered += h.weight;
+        });
+        unclassified += p.current_value * (1 - covered);
+      } else {
+        unclassified += p.current_value;
+      }
+    }
+  });
+  if (unclassified > 0.5) byCountry.set(COUNTRY_UNCLASSIFIED_LABEL, (byCountry.get(COUNTRY_UNCLASSIFIED_LABEL) || 0) + unclassified);
+  const bars = [...byCountry.entries()].sort((a, b) => b[1] - a[1]).map(([label, value], i) => ({ label, value, pct: scopeTotal ? value / scopeTotal : 0, color: LENS_PALETTE[i % LENS_PALETTE.length] }));
+  return { bars, total: scopeTotal };
+}
+function marketCapTierBlend(scopePositions) {
+  const equityLike = scopePositions.filter(p => EQUITY_LIKE_L3S.includes(instruments[p.instrument_id]?.l3));
+  const scopeTotal = equityLike.reduce((s, p) => s + p.current_value, 0);
+  const byTier = new Map();
+  let unclassified = 0;
+  equityLike.forEach(p => {
+    const inst = instruments[p.instrument_id];
+    if (['Domestic stock', 'Foreign stock', 'ESOP/RSU/SAR'].includes(inst.l3)) {
+      const tier = researchFor(p.instrument_id)?.marketCapTier;
+      if (tier) byTier.set(tier, (byTier.get(tier) || 0) + p.current_value); else unclassified += p.current_value;
+    } else {
+      const lt = lookthroughFor(p.instrument_id);
+      if (lt && lt.top10) {
+        let covered = 0;
+        lt.top10.forEach(h => {
+          if (!h.marketCapTier) return;
+          byTier.set(h.marketCapTier, (byTier.get(h.marketCapTier) || 0) + p.current_value * h.weight);
+          covered += h.weight;
+        });
+        unclassified += p.current_value * (1 - covered);
+      } else {
+        unclassified += p.current_value;
+      }
+    }
+  });
+  if (unclassified > 0.5) byTier.set('Unclassified', (byTier.get('Unclassified') || 0) + unclassified);
+  const TIER_ORDER = ['Mega', 'Large', 'Mid', 'Small', 'Micro', 'Unclassified'];
+  const bars = [...byTier.entries()].sort((a, b) => TIER_ORDER.indexOf(a[0]) - TIER_ORDER.indexOf(b[0])).map(([label, value], i) => ({ label, value, pct: scopeTotal ? value / scopeTotal : 0, color: LENS_PALETTE[i % LENS_PALETTE.length] }));
+  return { bars, total: scopeTotal };
+}
+// Weighted-average P/E: real trailing P/E for direct stocks, real fund-level P/E for funds
+// (never re-derived from top-10 holdings the AMC didn't itself disclose a blended figure for).
+function blendedPE(scopePositions) {
+  let weightedSum = 0, weightTotal = 0, covered = 0, total = 0;
+  scopePositions.forEach(p => {
+    total += p.current_value;
+    const inst = instruments[p.instrument_id];
+    let pe = null;
+    if (['Domestic stock', 'Foreign stock'].includes(inst?.l3)) pe = researchFor(p.instrument_id)?.peRatioTTM;
+    else if (['Index fund', 'Active MF'].includes(inst?.l3)) pe = lookthroughFor(p.instrument_id)?.fundLevelPE;
+    if (pe != null) { weightedSum += pe * p.current_value; weightTotal += p.current_value; covered += p.current_value; }
+  });
+  return { portfolioPE: weightTotal ? weightedSum / weightTotal : null, coveragePct: total ? covered / total : 0 };
+}
+// Compares a weighted average of REAL, disclosed analyst-consensus growth outlooks (only across
+// positions that have one on file) against GOAL_PLAN's own existing-corpus scenario rates — a
+// pure diff of two already-disclosed numbers, never a new projection (AI boundaries).
+function goalFitComparator(scopePositions) {
+  const weightedSum = { y2: 0, y3: 0, y5: 0 }, weightTotal = { y2: 0, y3: 0, y5: 0 };
+  let covered = 0, total = 0;
+  scopePositions.forEach(p => {
+    total += p.current_value;
+    const r = researchFor(p.instrument_id);
+    if (r && r.growthOutlook) {
+      covered += p.current_value;
+      ['y2', 'y3', 'y5'].forEach(k => { if (r.growthOutlook[k] != null) { weightedSum[k] += r.growthOutlook[k] * p.current_value; weightTotal[k] += p.current_value; } });
+    }
+  });
+  const blended = {};
+  ['y2', 'y3', 'y5'].forEach(k => { blended[k] = weightTotal[k] ? weightedSum[k] / weightTotal[k] : null; });
+  const scenarios = GOAL_PLAN.scenarios;
+  return { blended, coveragePct: total ? covered / total : 0, scenarios, deltaVsBase: blended.y3 != null ? blended.y3 - scenarios.base.existing : null };
+}
+
+// ---- New deep-analysis insight cards — real, scope-aware, descriptive only (never a buy/sell
+// directive, per AI boundaries) ----
+function insightSectorRisk(scopePositions) {
+  const sectorData = sectorExposureLookthrough(scopePositions);
+  const top = sectorData.bars.filter(b => b.label !== 'Unclassified / Other')[0];
+  if (!top || top.pct < 0.20) return null;
+  const outlook = SECTOR_OUTLOOK[top.label];
+  if (!outlook) return { id: 'sector-risk', icon: 'flag', tone: 'medium', tag: 'Concentration', title: `${(top.pct * 100).toFixed(0)}% of equity exposure is ${top.label}`, body: `Counting fund look-through, <b>${top.label}</b> is <b>${formatINR(top.value)}</b> of equity exposure here — no researched sector outlook on file for it yet.` };
+  return { id: 'sector-risk', icon: 'flag', tone: top.pct > 0.35 ? 'high' : 'medium', tag: 'Concentration', title: `${(top.pct * 100).toFixed(0)}% of equity exposure is ${top.label}`, body: `Counting fund look-through, <b>${top.label}</b> is <b>${formatINR(top.value)}</b> (${(top.pct * 100).toFixed(0)}%) of equity exposure here. ${outlook.outlookNote} Key risks: ${outlook.risks.join('; ')}.` };
+}
+function trueConcentrationInsight(scopePositions) {
+  const tse = trueStockExposure(scopePositions);
+  const top = tse.rows[0];
+  if (!top || top.weight < 0.08) return null;
+  return { id: 'true-conc', icon: 'flag', tone: top.weight > 0.15 ? 'high' : 'medium', tag: 'Concentration', title: `${(top.weight * 100).toFixed(1)}% true exposure to one company`, body: `Counting both direct holdings and what your funds actually hold, <b>${top.name}</b> totals <b>${formatINR(top.totalValue)}</b> of household net worth${top.overlapFlag ? ' — held both directly and inside at least one fund' : ''}. Worth reviewing whether this matches your intended sizing.` };
+}
+function valuationBandInsight(scopePositions) {
+  const pe = blendedPE(scopePositions);
+  if (pe.portfolioPE == null || pe.coveragePct < 0.3) return null;
+  const bench = INDEX_PE_BENCHMARKS.nifty50;
+  const delta = (pe.portfolioPE - bench.peRatioTTM) / bench.peRatioTTM * 100;
+  return { id: 'valuation-band', icon: 'chart', tag: 'Valuation', title: `Blended P/E ${pe.portfolioPE.toFixed(1)}x`, body: `Weighted across ${(pe.coveragePct * 100).toFixed(0)}% of this view's value (where a P/E is on file), the blended trailing P/E is <b>${pe.portfolioPE.toFixed(1)}x</b> — <b>${Math.abs(delta).toFixed(0)}% ${delta >= 0 ? 'above' : 'below'}</b> the Nifty 50's ${bench.peRatioTTM}x (${bench.asof}). A data point on pricing, not a signal to act on.` };
+}
+function countryConcentrationInsight(scopePositions) {
+  const geo = geographyExposure(scopePositions);
+  const other = geo.bars.filter(b => !['India', 'United States', COUNTRY_UNCLASSIFIED_LABEL].includes(b.label));
+  const top = other[0];
+  if (!top || top.pct < 0.02) return null;
+  return { id: 'country-conc', icon: 'globe', tag: 'Geography', title: `Real exposure to ${top.label} beyond India/US`, body: `Combining direct holdings and fund look-through, <b>${formatINR(top.value)}</b> (${(top.pct * 100).toFixed(1)}% of equity exposure) is effectively in ${top.label} — not visible from currency alone.` };
+}
+function growthQualitySplitInsight(scopePositions) {
+  const withGrowth = scopePositions.filter(p => researchFor(p.instrument_id)?.growthOutlook?.y3 != null);
+  if (withGrowth.length < 3) return null;
+  const total = withGrowth.reduce((s, p) => s + p.current_value, 0);
+  const buckets = { High: 0, Moderate: 0, Low: 0 };
+  withGrowth.forEach(p => { const g = researchFor(p.instrument_id).growthOutlook.y3; buckets[g >= 0.20 ? 'High' : g >= 0.10 ? 'Moderate' : 'Low'] += p.current_value; });
+  const parts = Object.entries(buckets).filter(([, v]) => v > 0).map(([k, v]) => `${k} (${(v / total * 100).toFixed(0)}%)`).join(', ');
+  return { id: 'growth-quality', icon: 'trendUp', tag: 'Growth mix', title: 'Growth-outlook split of direct holdings', body: `Among the ${withGrowth.length} direct stock/RSU holdings with a researched 3-year growth outlook (${formatINR(total)} combined): ${parts}. High = 20%+ consensus CAGR, Moderate = 10-20%, Low = under 10%. Fund look-through holdings aren't included — no per-holding growth data exists for those yet.` };
+}
+
+const PORTFOLIO_INSIGHTS = [insightUsNoFund, insightEmployerConc, insightLiquidity, insightCostDrag, insightPpfasUs, insightNbfcFd, insightElssLockin];
 
 const SPECIAL_BY_INSTRUMENT = {
   inst_axis_elss: [insightElssLockin],
@@ -1059,7 +1315,7 @@ const SPECIAL_BY_INSTRUMENT = {
 };
 const CLASS_RELEVANT = {
   all: PORTFOLIO_INSIGHTS,
-  foreign_equity: [insightSemiTheme, insightUsNoFund],
+  foreign_equity: [insightUsNoFund],
   rsu: [insightEmployerConc],
   mf: [insightCostDrag, insightPpfasUs, insightElssLockin],
   indian_equity: [],
@@ -1213,6 +1469,11 @@ function computeScopedInsights(scope) {
     const sectorIns = sectorConcentrationInsight(scope.filtered.filter(p => classOf(p) === 'indian_equity' || scope.classId === 'indian_equity'));
     if (sectorIns) out.push(sectorIns);
   }
+  // Deep-analysis cards — real, look-through-aware, scope-aware regardless of classId.
+  [insightSectorRisk, trueConcentrationInsight, valuationBandInsight, countryConcentrationInsight, growthQualitySplitInsight].forEach(fn => {
+    const r = fn(scope.filtered);
+    if (r && !out.some(o => o.id === r.id)) out.push(r);
+  });
   if (scope.filtered.length > 1) {
     const withGain = scope.filtered.filter(p => gainPctOf(p) != null);
     if (withGain.length > 2) {
@@ -1866,9 +2127,390 @@ function GeneralInsightsPanel({ scope }) {
     </div>
   `;
 }
-function InsightsArea({ scope }) {
-  const isMfScope = scope.selected ? classOf(scope.selected) === 'mf' : scope.classId === 'mf';
-  return isMfScope ? html`<${MFInsightsPanel} scope=${scope} />` : html`<${GeneralInsightsPanel} scope=${scope} />`;
+// ---- Insights sub-tabs (2026-09-26 deep-analysis rebuild) — Overview / Holdings / Exposure /
+// Goal Fit / Performance & Signals. See Base resources/deep-analysis-methodology.md for how the
+// underlying research (research-profiles.js / fund-holdings.js / sector-outlook.js /
+// geography-outlook.js) was gathered and how to refresh it later.
+function InsightsOverviewTab({ scope }) {
+  const trend = useMemo(() => trendForScope(scope), [scope.label, scope.scopeTotal]);
+  const yearRows = useMemo(() => historicalYearRows(scope), [scope.label, scope.scopeTotal]);
+  const insights = useMemo(() => computeScopedInsights(scope), [scope.label, scope.classId, scope.memberId, scope.selected?.id]);
+  const isEpf = scope.scopePositions.length === 1 && scope.scopePositions[0].instrument_id === 'inst_epf_vinod';
+  const epfProj = useMemo(() => isEpf ? epfProjectionData() : null, [isEpf]);
+  const isOverview = !scope.selected && scope.classId === 'all';
+  const allocGroups = useMemo(() => isOverview ? groupByL1(scope.scopePositions).groups : null, [isOverview, scope.label]);
+  const classCompare = useMemo(() => isOverview ? classComparisonData(scope.memberId) : null, [isOverview, scope.memberId]);
+  const benchReturn = trend.benchmark ? trend.benchmark.return3mo : null;
+  const goalFit = useMemo(() => goalFitComparator(ALL_PRICED), []);
+  return html`
+    <div class="insights-col">
+      ${isEpf ? html`
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Real growth & projection</div>
+          <${Card}>
+            <${YearChart} seriesList=${[
+              { key: 'hist', points: epfProj.hist, color: 'var(--accent)', width: 2.4 },
+              { key: 'proj', points: epfProj.proj, color: 'var(--accent)', width: 2, dashed: true },
+            ]} height=${220} />
+            <div class="trend-note">Solid line: real year-end EPF balances, 2018–2026. Dashed: projected forward at this account's own real CAGR (~${formatPct(epfProj.cagr)} p.a.).</div>
+          <//>
+        </div>
+      ` : html`
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Trend — invested vs. growth, year by year</div>
+          <${Card}>
+            <div class="trend-stats-row">
+              <div><div class="trend-stat-value tabular ${trend.ownReturn >= 0 ? 'up' : 'down'}">${pctOrDash(trend.ownReturn)}</div><div class="trend-stat-label">${trend.ownReturnLabel}</div></div>
+              ${trend.benchmark ? html`<div><div class="trend-stat-value tabular ${benchReturn >= 0 ? 'up' : 'down'}">${pctOrDash(benchReturn)}</div><div class="trend-stat-label">${trend.benchmark.label} · trailing 3mo</div></div>` : ''}
+            </div>
+            <${GoalGrowthBars} rows=${yearRows} height=${240} />
+            <div class="trend-legend">
+              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--bronze-500)"></span>Invested</span>
+              <span class="trend-legend-item"><span class="trend-legend-swatch" style="background:var(--sage-500)"></span>Growth</span>
+            </div>
+            <div class="trend-note">Illustrative — only the endpoints are real. Invested is spread evenly since ${INVESTING_START_YEAR}; the growth rate is solved to land exactly on today's real total.</div>
+          <//>
+        </div>
+      `}
+
+      <div>
+        <div class="insight-section-title"><${Icon} name="bulb" size=${13} />Insights</div>
+        <div class="insight-section-body">
+          ${insights.map(ins => html`
+            <div class="insight-card" key=${ins.id}>
+              <span class="insight-icon ${ins.tone ? `tone-${ins.tone}` : ''}"><${Icon} name=${ins.icon} size=${16} /></span>
+              <div class="card-body">
+                <div class="insight-tag">${ins.tag}</div>
+                <div class="insight-title">${ins.title}</div>
+                <div class="insight-body" dangerouslySetInnerHTML=${{ __html: ins.body }} />
+              </div>
+            </div>
+          `)}
+        </div>
+      </div>
+
+      ${isOverview ? html`
+        <div>
+          <div class="insight-section-title"><${Icon} name="chart" size=${13} />Allocation</div>
+          <${Card}>
+            <div class="mini-alloc" style="cursor:default">
+              <${Donut} groups=${allocGroups} size=${120} strokeW=${20} />
+              <div class="mini-alloc-legend">
+                ${allocGroups.map(g => html`<div class="mini-alloc-item" key=${g.key}><span class="mini-alloc-dot" style=${{ background: `var(--${g.color}-500)` }} /><span class="mini-alloc-name">${g.key}</span><span class="mini-alloc-pct tabular">${(g.weight * 100).toFixed(0)}%</span></div>`)}
+              </div>
+            </div>
+          <//>
+        </div>
+        <div>
+          <div class="insight-section-title"><${Icon} name="chart" size=${13} />Across asset classes</div>
+          <${Card}><${ClassCompareBars} items=${classCompare} /><//>
+        </div>
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="flag" size=${13} />Goal fit at a glance</div>
+          <${Card}>
+            <div class="insight-body">Across the ${(goalFit.coveragePct * 100).toFixed(0)}% of household value with a researched growth outlook on file, the blended 3-year consensus growth is <b>${goalFit.blended.y3 != null ? formatPct(goalFit.blended.y3) : '—'}</b> — ${goalFit.deltaVsBase != null ? html`<b>${formatPct(Math.abs(goalFit.deltaVsBase))} ${goalFit.deltaVsBase >= 0 ? 'above' : 'below'}</b> the Goal plan's base-case existing-corpus assumption of ${formatPct(goalFit.scenarios.base.existing)}` : 'not enough researched data to compare yet'}. See the Goal Fit tab for the full breakdown.</div>
+          <//>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function HoldingResearchDetail({ p, inst }) {
+  const research = researchFor(p.instrument_id);
+  const lt = ['Index fund', 'Active MF'].includes(inst.l3) ? lookthroughFor(p.instrument_id) : null;
+  if (lt) {
+    if (lt.instrumentType === 'debt') {
+      return html`
+        <div class="chip-row">
+          <span class="chip">Debt fund</span>
+          <span class="chip">${lt.holdingType}</span>
+          ${lt.avgMaturityDays != null ? html`<span class="chip">Avg maturity <b>${lt.avgMaturityDays}d</b></span>` : ''}
+          <span class="chip">Credit: <b>${lt.creditQuality}</b></span>
+        </div>
+        <div class="holding-row-badge" style="margin-top:var(--space-3)">Source: ${lt.source} · as of ${lt.asof}</div>
+      `;
+    }
+    return html`
+      <div class="chip-row">
+        <span class="chip">${lt.category}</span>
+        <span class="chip">${lt.capTilt}</span>
+        ${lt.fundLevelPE != null ? html`<span class="chip">Fund P/E <b>${lt.fundLevelPE.toFixed(1)}x</b></span>` : ''}
+        <span class="chip">Top 10 = <b>${(lt.top10CoveragePct * 100).toFixed(0)}%</b> of fund</span>
+      </div>
+      <div style="margin-top:var(--space-4)">
+        ${lt.top10.map((h, i) => {
+          const overlapDirect = ALL_PRICED.some(x => { const xi = instruments[x.instrument_id]; return xi && ['Domestic stock', 'Foreign stock'].includes(xi.l3) && (h.isin ? xi.isin === h.isin : normalizeCompanyName(xi.name) === normalizeCompanyName(h.name)); });
+          return html`
+            <div class="lt-table-row" key=${i}>
+              <span class="lt-table-name">${h.name}${overlapDirect ? html`<span class="overlap-tag">also held directly</span>` : ''}</span>
+              <span class="tabular">${(h.weight * 100).toFixed(1)}%</span>
+            </div>
+          `;
+        })}
+        <div class="lt-table-row"><span class="lt-table-name">Other (beyond top 10)</span><span class="tabular">${((1 - lt.top10CoveragePct) * 100).toFixed(0)}% — unclassified</span></div>
+      </div>
+      <div class="holding-row-badge" style="margin-top:var(--space-3)">Source: ${lt.source} · as of ${lt.asof}</div>
+    `;
+  }
+  if (research) {
+    return html`
+      <div class="chip-row">
+        ${research.marketCapTier ? html`<span class="chip">Cap: <b>${research.marketCapTier}</b></span>` : ''}
+        <span class="chip">Country: <b>${research.country}</b></span>
+        ${research.peRatioTTM != null ? html`<span class="chip">P/E TTM <b>${research.peRatioTTM.toFixed(1)}x</b></span>` : ''}
+        ${research.peRatioForward != null ? html`<span class="chip">Fwd P/E <b>${research.peRatioForward.toFixed(1)}x</b></span>` : ''}
+        ${research.growthOutlook ? html`<span class="chip">2yr <b>${pctOrDash(research.growthOutlook.y2)}</b></span><span class="chip">3yr <b>${pctOrDash(research.growthOutlook.y3)}</b></span><span class="chip">5yr <b>${pctOrDash(research.growthOutlook.y5)}</b></span>` : ''}
+      </div>
+      ${research.thesisNote ? html`<div class="insight-body" style="margin-top:var(--space-3)">${research.thesisNote}</div>` : ''}
+      ${research.keyRisks?.length ? html`<ul class="holding-risk-list">${research.keyRisks.map((r, i) => html`<li key=${i}>${r}</li>`)}</ul>` : ''}
+      <div class="holding-row-badge" style="margin-top:var(--space-3)">${research.growthBasis || ''} Source: ${research.source} · as of ${research.asof}</div>
+    `;
+  }
+  return html`<div class="gap-note">No deep-research profile on file for this holding yet — it's still priced/tracked normally, just not part of this pass's fundamentals research.</div>`;
+}
+
+function InsightsHoldingsTab({ scope }) {
+  const [view, setView] = useState('by-holding');
+  const [sortKey, setSortKey] = useState('value');
+  const [expandedKeys, setExpandedKeys] = useState(() => new Set());
+  function toggleExpand(key) { setExpandedKeys(prev => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; }); }
+
+  const byHoldingRows = useMemo(() => {
+    const rows = mergedRowsFor(scope.filtered);
+    const sorted = [...rows].sort((a, b) => {
+      if (sortKey === 'name') return (instruments[a.instrument_id]?.name || '').localeCompare(instruments[b.instrument_id]?.name || '');
+      if (sortKey === 'pe') return (researchFor(b.instrument_id)?.peRatioTTM ?? -1) - (researchFor(a.instrument_id)?.peRatioTTM ?? -1);
+      if (sortKey === 'growth') return (researchFor(b.instrument_id)?.growthOutlook?.y3 ?? -1) - (researchFor(a.instrument_id)?.growthOutlook?.y3 ?? -1);
+      return b.current_value - a.current_value;
+    });
+    return sorted;
+  }, [scope.filtered, sortKey]);
+
+  const combined = useMemo(() => trueStockExposure(scope.filtered), [scope.filtered]);
+
+  return html`
+    <div>
+      <div class="sort-select-row">
+        <select class="filter-select" value=${view} onChange=${e => setView(e.target.value)}>
+          <option value="by-holding">By holding</option>
+          <option value="combined">Combined (look-through)</option>
+        </select>
+        ${view === 'by-holding' ? html`
+          <select class="filter-select" value=${sortKey} onChange=${e => setSortKey(e.target.value)}>
+            <option value="value">Sort: Value</option>
+            <option value="pe">Sort: P/E</option>
+            <option value="growth">Sort: 3yr growth</option>
+            <option value="name">Sort: Name</option>
+          </select>
+        ` : ''}
+      </div>
+
+      ${view === 'by-holding' ? byHoldingRows.map(p => {
+        const inst = instruments[p.instrument_id];
+        const isExpanded = expandedKeys.has(p.id);
+        const weight = householdTotals.current_total ? p.current_value / householdTotals.current_total : 0;
+        const research = researchFor(p.instrument_id);
+        const lt = ['Index fund', 'Active MF'].includes(inst?.l3) ? lookthroughFor(p.instrument_id) : null;
+        let badge = '';
+        if (research?.peRatioTTM != null) badge = `P/E ${research.peRatioTTM.toFixed(1)}x${research.growthOutlook?.y3 != null ? ` · 3yr growth ${(research.growthOutlook.y3 * 100).toFixed(0)}%` : ''}`;
+        else if (lt) badge = lt.instrumentType === 'debt' ? `Debt fund · ${lt.holdingType.split('—')[0].trim()}` : `Top 10 shown · as of ${lt.asof}`;
+        else if (inst?.rate != null) badge = `${(inst.rate * 100).toFixed(2)}% contracted rate`;
+        return html`
+          <div class="holding-row" key=${p.id} onClick=${() => toggleExpand(p.id)}>
+            <div class="holding-row-head">
+              <div>
+                <div class="holding-row-name"><span class="expand-toggle">${isExpanded ? '−' : '+'}</span>${p.isMerged ? `${p.lots.length} holdings — ` : ''}${inst?.name || p.instrument_id}</div>
+                <div class="holding-row-sub">${classLabel(classOf(p))}${badge ? ` · ${badge}` : ''}</div>
+              </div>
+              <div class="holding-row-value">
+                <div class="tabular"><b>${formatINR(p.current_value)}</b></div>
+                <div class="holding-row-badge">${(weight * 100).toFixed(1)}% of net worth</div>
+              </div>
+            </div>
+            ${isExpanded ? html`<div onClick=${e => e.stopPropagation()}><${HoldingResearchDetail} p=${p} inst=${inst} /></div>` : ''}
+          </div>
+        `;
+      }) : combined.rows.map(r => {
+        const key = r.name;
+        const isExpanded = expandedKeys.has(key);
+        return html`
+          <div class="holding-row" key=${key} onClick=${() => toggleExpand(key)}>
+            <div class="holding-row-head">
+              <div>
+                <div class="holding-row-name"><span class="expand-toggle">${isExpanded ? '−' : '+'}</span>${r.name}${r.overlapFlag ? html`<span class="overlap-tag">direct + fund</span>` : ''}</div>
+                <div class="holding-row-sub">${r.sector || 'Sector n/a'} · ${r.country || 'Country n/a'}${r.marketCapTier ? ` · ${r.marketCapTier} cap` : ''}</div>
+              </div>
+              <div class="holding-row-value">
+                <div class="tabular"><b>${formatINR(r.totalValue)}</b></div>
+                <div class="holding-row-badge">${(r.weight * 100).toFixed(1)}% of net worth</div>
+              </div>
+            </div>
+            ${isExpanded ? html`
+              <div onClick=${e => e.stopPropagation()} style="margin-top:var(--space-3)">
+                ${r.sources.map((s, i) => html`<div class="lt-table-row" key=${i}><span class="lt-table-name">${s.label}</span><span class="tabular">${formatINR(s.value)}</span></div>`)}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      })}
+      ${view === 'combined' && combined.unclassifiedLongTail > 1000 ? html`<div class="gap-note" style="margin-top:var(--space-3)">${formatINR(combined.unclassifiedLongTail)} of fund value sits beyond any fund's disclosed top-10 — genuinely unclassified, not estimated.</div>` : ''}
+    </div>
+  `;
+}
+
+function InsightsExposureTab({ scope }) {
+  const sectorData = useMemo(() => sectorExposureLookthrough(scope.filtered), [scope.filtered]);
+  const geoData = useMemo(() => geographyExposure(scope.filtered), [scope.filtered]);
+  const capData = useMemo(() => marketCapTierBlend(scope.filtered), [scope.filtered]);
+  const pe = useMemo(() => blendedPE(scope.filtered), [scope.filtered]);
+  const bench = INDEX_PE_BENCHMARKS.nifty50;
+  const delta = pe.portfolioPE != null ? (pe.portfolioPE - bench.peRatioTTM) / bench.peRatioTTM * 100 : null;
+  return html`
+    <div class="insights-col">
+      <div>
+        <div class="insight-section-title"><${Icon} name="chart" size=${13} />Sector & industry</div>
+        <${Card}>
+          <${CompositionBars} bars=${sectorData.bars} />
+          <div class="gap-note" style="margin-top:var(--space-4)">Look-through aware — fund holdings are distributed across their real disclosed top-10 sectors; anything beyond a fund's top 10, or without look-through data, is bucketed as Unclassified rather than guessed.</div>
+        <//>
+      </div>
+      <div>
+        <div class="insight-section-title"><${Icon} name="globe" size=${13} />Geography</div>
+        <${Card}>
+          <${CompositionBars} bars=${geoData.bars} />
+          <div class="gap-note" style="margin-top:var(--space-4)">Country is each stock's real domicile (researched), not listing currency — e.g. ASML shows as Netherlands, not "USD."</div>
+        <//>
+      </div>
+      <div>
+        <div class="insight-section-title"><${Icon} name="layers" size=${13} />Market-cap tiers</div>
+        <${Card}><${CompositionBars} bars=${capData.bars} /><//>
+      </div>
+      <div>
+        <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Valuation</div>
+        <${Card}>
+          ${pe.portfolioPE != null ? html`
+            <div class="trend-stats-row">
+              <div><div class="trend-stat-value tabular">${pe.portfolioPE.toFixed(1)}x</div><div class="trend-stat-label">Blended P/E (${(pe.coveragePct * 100).toFixed(0)}% coverage)</div></div>
+              <div><div class="trend-stat-value tabular">${bench.peRatioTTM}x</div><div class="trend-stat-label">Nifty 50 · ${bench.asof}</div></div>
+            </div>
+            <div class="trend-note">${(delta >= 0 ? '+' : '')}${delta.toFixed(0)}% ${delta >= 0 ? 'above' : 'below'} the Nifty 50 — a data point on pricing, not a signal to act on.</div>
+          ` : html`<div class="gap-note">Not enough P/E-covered value in this view yet.</div>`}
+        <//>
+      </div>
+      <div class="span-2">
+        ${(() => {
+          const topSector = sectorData.bars.find(b => b.label !== 'Unclassified / Other');
+          const outlook = topSector ? SECTOR_OUTLOOK[topSector.label] : null;
+          if (!outlook) return '';
+          return html`
+            <div class="insight-section-title"><${Icon} name="bulb" size=${13} />Top-sector outlook</div>
+            <${Card}>
+              <div class="insight-body"><b>${topSector.label}</b>: ${outlook.outlookNote}</div>
+              <div class="chip-row">${outlook.growthDrivers.map((d, i) => html`<span class="chip" key=${i}>${d}</span>`)}</div>
+              <ul class="holding-risk-list">${outlook.risks.map((r, i) => html`<li key=${i}>${r}</li>`)}</ul>
+              <div class="holding-row-badge" style="margin-top:var(--space-3)">Source: ${outlook.source} · as of ${outlook.asof}</div>
+            <//>
+          `;
+        })()}
+      </div>
+    </div>
+  `;
+}
+
+function InsightsGoalFitTab() {
+  const goalFit = useMemo(() => goalFitComparator(ALL_PRICED), []);
+  const rows = [
+    { label: 'Pessimistic (existing corpus)', rate: goalFit.scenarios.pessimistic.existing, tone: 'critical' },
+    { label: 'Base case (existing corpus)', rate: goalFit.scenarios.base.existing, tone: '' },
+    { label: 'Optimistic (existing corpus)', rate: goalFit.scenarios.optimistic.existing, tone: 'gain' },
+  ];
+  return html`
+    <div class="insights-col">
+      <div class="span-2">
+        <div class="gap-note">Goal Fit always reflects your full household portfolio, not the current class/member filter above — a plan-vs-reality check only makes sense at the whole-portfolio level.</div>
+      </div>
+      <div class="span-2">
+        <div class="insight-section-title"><${Icon} name="flag" size=${13} />Researched growth vs. the Goal plan's assumptions</div>
+        <${Card}>
+          <div class="trend-stats-row">
+            <div><div class="trend-stat-value tabular">${pctOrDash(goalFit.blended.y2)}</div><div class="trend-stat-label">Blended 2yr consensus</div></div>
+            <div><div class="trend-stat-value tabular">${pctOrDash(goalFit.blended.y3)}</div><div class="trend-stat-label">Blended 3yr consensus</div></div>
+            <div><div class="trend-stat-value tabular">${pctOrDash(goalFit.blended.y5)}</div><div class="trend-stat-label">Blended 5yr consensus</div></div>
+          </div>
+          <div class="insight-body" style="margin-top:var(--space-4)">Weighted across the ${(goalFit.coveragePct * 100).toFixed(0)}% of household value that has a researched analyst-consensus growth outlook on file (direct stocks/RSU only — fund look-through holdings don't have per-holding growth estimates yet).</div>
+          <div style="margin-top:var(--space-5)">
+            ${rows.map(r => html`
+              <div class="lt-table-row" key=${r.label}>
+                <span class="lt-table-name">${r.label}</span>
+                <span class="tabular ${r.tone === 'gain' ? 'up' : r.tone === 'critical' ? 'down' : ''}">${formatPct(r.rate)}</span>
+              </div>
+            `)}
+          </div>
+          ${goalFit.deltaVsBase != null ? html`<div class="trend-note" style="margin-top:var(--space-4)">Your researched 3yr blend is <b>${formatPct(Math.abs(goalFit.deltaVsBase))} ${goalFit.deltaVsBase >= 0 ? 'above' : 'below'}</b> the plan's base-case existing-corpus rate — worth checking against your contribution plan on the Goal tab, not a signal to change anything on its own.</div>` : ''}
+        <//>
+      </div>
+    </div>
+  `;
+}
+
+function InsightsPerformanceTab({ scope }) {
+  const techScan = useMemo(() => technicalScanData(scope.scopePositions), [scope.label]);
+  const perf = useMemo(() => performanceRanking(scope.scopePositions), [scope.label]);
+  const concFlags = useMemo(() => concentrationFlagsForClass(scope.scopePositions, householdTotals.current_total), [scope.label]);
+  const maturity = useMemo(() => maturityLadderData(scope.scopePositions), [scope.label]);
+  const news = useMemo(() => newsForPositions(scope.scopePositions), [scope.label]);
+  const mfPositions = useMemo(() => scope.scopePositions.filter(p => classOf(p) === 'mf'), [scope.label]);
+  const comp = useMemo(() => mfPositions.length ? mfCompositionData(mfPositions) : null, [mfPositions]);
+  const costTax = useMemo(() => mfPositions.length ? mfCostTaxData(mfPositions) : null, [mfPositions]);
+  const rebal = useMemo(() => (mfPositions.length && comp) ? mfRebalancingBullets(mfPositions, comp) : [], [mfPositions, comp]);
+  return html`
+    <div class="insights-col">
+      ${techScan.rows.length ? html`
+        <div>
+          <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Technical range scan</div>
+          <${Card}><${RangeScanSection} data=${techScan} /><//>
+        </div>
+      ` : ''}
+      ${perf.count >= 2 ? html`
+        <div>
+          <div class="insight-section-title"><${Icon} name="flag" size=${13} />Leaders & laggards</div>
+          <${Card}>
+            <div class="insight-tag">Best</div><${RankList} items=${perf.leaders} />
+            ${perf.laggards.length ? html`<div class="insight-tag" style="margin-top:var(--space-4)">Worst</div><${RankList} items=${perf.laggards} />` : ''}
+          <//>
+        </div>
+      ` : ''}
+      ${concFlags.length ? html`
+        <div>
+          <div class="insight-section-title"><${Icon} name="flag" size=${13} />Concentration scan</div>
+          <${Card}><${ConcentrationList} items=${concFlags} /><div class="trend-note" style="margin-top:var(--space-3)">Flags any single holding at or above 8% of household net worth (raw position, not look-through — see Holdings tab for the combined view).</div><//>
+        </div>
+      ` : ''}
+      ${maturity.length ? html`
+        <div>
+          <div class="insight-section-title"><${Icon} name="calendar" size=${13} />Maturity ladder</div>
+          <${Card}><${MaturityLadder} items=${maturity} /><//>
+        </div>
+      ` : ''}
+      ${costTax ? html`
+        <div>
+          <div class="insight-section-title"><${Icon} name="wallet" size=${13} />MF cost & tax</div>
+          <${Card}><div class="insight-body">This selection's mutual funds carry <b>${formatINR(costTax.totalGain)}</b> unrealised gain on <b>${formatINR(costTax.totalValue)}</b> of value.</div><//>
+        </div>
+      ` : ''}
+      ${rebal.length ? html`
+        <div>
+          <div class="insight-section-title"><${Icon} name="flag" size=${13} />MF rebalancing notes</div>
+          <${Card}>${rebal.map((r, i) => html`<div class="rebalance-item" key=${i}><span class="rebalance-bullet" /><span dangerouslySetInnerHTML=${{ __html: r }} /></div>`)}<//>
+        </div>
+      ` : ''}
+      <div>
+        <div class="insight-section-title"><${Icon} name="newspaper" size=${13} />Market analysis & news</div>
+        <${Card}><${NewsSection} items=${news} /><//>
+      </div>
+    </div>
+  `;
 }
 
 function PortfolioScreen({ onNavigate }) {
@@ -1930,9 +2572,17 @@ function PortfolioScreen({ onNavigate }) {
 // overview, reusing the same InsightsArea (MF panel / GeneralInsightsPanel)
 // built for Portfolio's old right rail, now given a full-width page.
 // ============================================================
+const INSIGHTS_SUB_TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'holdings', label: 'Holdings' },
+  { id: 'exposure', label: 'Exposure' },
+  { id: 'goalfit', label: 'Goal Fit' },
+  { id: 'performance', label: 'Performance & Signals' },
+];
 function InsightsScreen() {
   const [classId, setClassId] = useState('all');
   const [memberId, setMemberId] = useState('all');
+  const [subTab, setSubTab] = useState('overview');
   const scope = useMemo(() => computeScope(classId, memberId, null), [classId, memberId]);
   return html`
     <div>
@@ -1949,7 +2599,14 @@ function InsightsScreen() {
           </select>
         </div>
       </div>
-      <${InsightsArea} scope=${scope} />
+      <div class="class-btn-row">
+        ${INSIGHTS_SUB_TABS.map(t => html`<button key=${t.id} class="class-btn ${subTab === t.id ? 'active' : ''}" onClick=${() => setSubTab(t.id)}>${t.label}</button>`)}
+      </div>
+      ${subTab === 'overview' ? html`<${InsightsOverviewTab} scope=${scope} />` : ''}
+      ${subTab === 'holdings' ? html`<${InsightsHoldingsTab} scope=${scope} />` : ''}
+      ${subTab === 'exposure' ? html`<${InsightsExposureTab} scope=${scope} />` : ''}
+      ${subTab === 'goalfit' ? html`<${InsightsGoalFitTab} />` : ''}
+      ${subTab === 'performance' ? html`<${InsightsPerformanceTab} scope=${scope} />` : ''}
     </div>
   `;
 }
