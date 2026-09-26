@@ -757,8 +757,9 @@ function whatChangedCards() {
   const cards = [];
   if (flags.length) {
     const f = flags[0];
-    const inst = instruments[positions.find(p => p.id === f.affected_positions[0])?.instrument_id];
-    cards.push({ icon: 'flag', title: `${inst?.name.split(' ').slice(0, 3).join(' ')} · ${f.category.toLowerCase()}`, sub: f.signal, trailing: formatINR(f.exposure_amount), severity: f.severity, key: 'flag' });
+    const pos = positions.find(p => p.id === f.affected_positions[0]);
+    const inst = instruments[pos?.instrument_id];
+    cards.push({ icon: 'flag', title: `${inst?.name.split(' ').slice(0, 3).join(' ')} · ${f.category.toLowerCase()}`, sub: f.signal, trailing: formatINR(pos?.current_value ?? f.exposure_amount), severity: f.severity, key: 'flag' });
   }
   if (newsDigest.item_count) {
     cards.push({ icon: 'newspaper', title: `${newsDigest.item_count} news items across ${newsDigest.affected_holding_count} holdings`, sub: 'This week', trailing: '', key: 'news' });
@@ -806,8 +807,9 @@ function portfolioActionItems() {
   const immediate = [], future = [];
 
   flags.filter(f => ['Critical', 'High'].includes(f.severity)).forEach(f => {
-    const inst = instruments[positions.find(p => p.id === f.affected_positions[0])?.instrument_id];
-    immediate.push({ icon: 'flag', severity: f.severity, title: `${inst?.name.split(' ').slice(0, 3).join(' ')} · ${f.category.toLowerCase()}`, sub: f.signal, trailing: formatINR(f.exposure_amount), key: `flag-${f.code}` });
+    const pos = positions.find(p => p.id === f.affected_positions[0]);
+    const inst = instruments[pos?.instrument_id];
+    immediate.push({ icon: 'flag', severity: f.severity, title: `${inst?.name.split(' ').slice(0, 3).join(' ')} · ${f.category.toLowerCase()}`, sub: f.signal, trailing: formatINR(pos?.current_value ?? f.exposure_amount), key: `flag-${f.code}` });
   });
   if (reviewQueue.pending_transactions > 0) immediate.push({ icon: 'inbox', title: `${reviewQueue.pending_transactions} extracted transactions awaiting review`, sub: 'Review queue', key: 'rq-txn' });
   // reviewQueue.pending_documents_uploaded is deliberately NOT surfaced on Today — it's a disclosed

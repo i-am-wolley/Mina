@@ -9,7 +9,7 @@ export const flags = [
     category: 'Manager change',
     severity: 'High',
     affected_positions: ['pos_k_mf_1'],
-    exposure_amount: 2417578.27,
+    exposure_amount: 2343556.96, // stale-prone by design — Today derives the live figure from pos_k_mf_1.current_value instead of trusting this field; kept in sync manually each reprice pass as a documented baseline
     signal: 'Fund manager exit followed by a change in trailing performance.',
     evidence: 'Axis ELSS Tax Saver Fund’s lead manager departed 3 months ago; the fund has trailed its category median in both months since.',
     reasoning: 'A manager exit on an actively managed fund removes the thing you were actually paying for — the manager’s process. Two months is early, but it is the kind of change worth watching rather than ignoring.',
