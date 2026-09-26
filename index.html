@@ -479,6 +479,7 @@ function formatINR(amount, { compact = true } = {}) {
 }
 function formatFullINR(amount) { return `₹${Math.round(amount).toLocaleString('en-IN')}`; }
 function formatPct(x, digits = 1) { const sign = x > 0 ? '+' : ''; return `${sign}${(x * 100).toFixed(digits)}%`; }
+function formatPctMagnitude(x, digits = 1) { return `${(Math.abs(x) * 100).toFixed(digits)}%`; }
 function formatNum(x, digits = 2) { if (x == null) return '—'; return x.toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
 function formatMoney(amount, currency) { return currency === 'USD' ? `$${formatNum(amount, 2)}` : formatINR(amount); }
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -696,7 +697,7 @@ function currencyMajority(positionList) {
 }
 function buildIllustrativeTrend(startValue, endValue, days = 90, seed = 7) {
   const rand = seededRandom(seed);
-  const today = new Date('2026-09-06T00:00:00');
+  const today = new Date('2026-09-26T00:00:00');
   let value = startValue;
   const series = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -772,7 +773,7 @@ function whatChangedCards() {
 }
 
 function AgendaList() {
-  const today = new Date('2026-09-06T00:00:00');
+  const today = new Date('2026-09-26T00:00:00');
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(d.getDate() + i);
     const iso = toLocalISO(d);
@@ -910,7 +911,7 @@ function TodayScreen({ onNavigate }) {
           ${loading ? html`<${Skeleton} width="280px" height="40px" />` : html`<div class="hero-value tabular">${formatFullINR(householdTotals.current_total)}</div>`}
           <div class="hero-deltas tabular">
             <span class="delta ${todayFlat ? 'flat' : (up ? 'up' : 'down')}">${todayFlat ? 'No new pricing yet' : `${up ? '▲' : '▼'} ${formatINR(Math.abs(householdTotals.delta_today))}`} <span class="delta-label">today</span></span>
-            <span class="delta ${householdTotals.delta_month_pct >= 0 ? 'up' : 'down'}">${householdTotals.delta_month_pct >= 0 ? '▲' : '▼'} ${formatPct(Math.abs(householdTotals.delta_month_pct))} <span class="delta-label">this month</span></span>
+            <span class="delta ${householdTotals.delta_month_pct >= 0 ? 'up' : 'down'}">${householdTotals.delta_month_pct >= 0 ? '▲' : '▼'} ${formatPctMagnitude(householdTotals.delta_month_pct)} <span class="delta-label">this month</span></span>
           </div>
           ${loading ? html`<div style="margin-top:var(--space-6)"><${Skeleton} height="90px" /></div>` : html`<${Sparkline} data=${netWorthHistory} />`}
         </div>
@@ -1066,11 +1067,18 @@ const CLASS_RELEVANT = {
 };
 
 // ---- Scope-aware insight generation ---------------------------------------
+// inst.tech's 52-week/day range and volume are always in the instrument's native currency
+// (e.g. raw USD for foreign stocks/RSU), but p.nav is stored in INR for those same positions
+// (price_usd × spot rate) — comparing them directly would silently clamp every USD holding to
+// "at its 52-week high." nativePrice() picks the field that's actually in the same currency as
+// inst.tech before any range math or display.
+function nativePrice(p) { return p.price_usd != null ? p.price_usd : p.nav; }
 function technicalInsight(p) {
   const inst = instruments[p.instrument_id];
   if (!inst?.tech) return null;
   const { week52High, week52Low, dayHigh, dayLow, volume } = inst.tech;
-  const posInRange = (p.nav - week52Low) / (week52High - week52Low);
+  const price = nativePrice(p);
+  const posInRange = (price - week52Low) / (week52High - week52Low);
   let read;
   if (posInRange > 0.92) read = 'trading right at its 52-week high — momentum is strong, but so is the risk of chasing a top.';
   else if (posInRange < 0.15) read = 'trading near its 52-week low — either a real value opportunity or a reason the market has soured on it. Worth checking why before buying more.';
@@ -1078,7 +1086,7 @@ function technicalInsight(p) {
   else read = `sitting mid-range for the year (${(posInRange * 100).toFixed(0)}% of the way from its 52-week low to high) — no strong technical signal either way.`;
   return {
     id: 'technical', icon: 'trendUp', tag: 'Technical', title: `52-week range: ${formatMoney(week52Low, inst.currency)} – ${formatMoney(week52High, inst.currency)}`,
-    body: `At ${formatMoney(p.nav, inst.currency)}, ${inst.name.split(' ').slice(0, 3).join(' ')} is ${read} Day range ${formatMoney(dayLow, inst.currency)}–${formatMoney(dayHigh, inst.currency)}, volume ${volume.toLocaleString('en-IN')}. <span style="opacity:0.7">Source: Yahoo Finance, ${inst.tech.asof.split('(')[0].trim()}.</span>`,
+    body: `At ${formatMoney(price, inst.currency)}, ${inst.name.split(' ').slice(0, 3).join(' ')} is ${read} Day range ${formatMoney(dayLow, inst.currency)}–${formatMoney(dayHigh, inst.currency)}, volume ${volume.toLocaleString('en-IN')}. <span style="opacity:0.7">Source: Yahoo Finance, ${inst.tech.asof.split('(')[0].trim()}.</span>`,
   };
 }
 function peerComparisonInsight(p, peers) {
@@ -1245,7 +1253,7 @@ function technicalScanData(scopePositions) {
   const rows = scopePositions.filter(p => instruments[p.instrument_id]?.tech && p.nav != null).map(p => {
     const inst = instruments[p.instrument_id];
     const { week52High, week52Low } = inst.tech;
-    const pos = week52High > week52Low ? (p.nav - week52Low) / (week52High - week52Low) : 0.5;
+    const pos = week52High > week52Low ? (nativePrice(p) - week52Low) / (week52High - week52Low) : 0.5;
     return { id: p.id, name: inst.name, pos: Math.min(Math.max(pos, 0), 1) };
   }).sort((a, b) => b.pos - a.pos);
   return { rows, nearHigh: rows.filter(r => r.pos > 0.85).length, nearLow: rows.filter(r => r.pos < 0.25).length };

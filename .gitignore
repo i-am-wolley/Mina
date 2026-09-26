@@ -3,5 +3,9 @@
 # mock-data/*.js instead. Never remove this line without re-checking that content.
 Base resources/Statements to look and build/
 
+# Same reasoning — ad-hoc order-confirmation screenshots the user drops in for a single
+# session's data entry (folio/order-ID detail), already transcribed into mock-data/*.js.
+New Update/
+
 # Local Claude Code settings
 .claude/settings.local.json
