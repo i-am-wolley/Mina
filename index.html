@@ -275,6 +275,7 @@
   .hero-toggle-value { font-family: var(--font-mono); font-weight: var(--fw-bold); font-size: var(--fs-heading); }
   .hero-toggle-value.dim { color: var(--text-tertiary); }
   .hero-toggle-value.down { color: var(--color-loss); }
+  .hero-toggle-value.up { color: var(--color-gain); }
   .hero-toggle-label { font-size: var(--fs-micro); color: var(--text-tertiary); }
   .hero-toggle-swap { color: var(--text-tertiary); }
   .hero-toggle-note { font-size: var(--fs-micro); color: var(--text-tertiary); margin-top: var(--space-2); line-height: 1.5; }
@@ -343,6 +344,18 @@
   .lt-table-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .overlap-tag { font-size: 10px; padding: 1px 6px; border-radius: var(--radius-pill); background: var(--terracotta-100, var(--surface-sunken)); color: var(--terracotta-500, var(--text-secondary)); margin-left: var(--space-2); }
   .sort-select-row { display: flex; justify-content: flex-end; gap: var(--space-3); margin-bottom: var(--space-5); }
+  .metric-tile-row { display: flex; gap: var(--space-4); flex-wrap: wrap; margin: var(--space-6) 0 var(--space-8); }
+  .metric-tile { flex: 1 1 170px; border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); background: var(--surface-card); }
+  .metric-tile-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--text-tertiary); font-weight: var(--fw-bold); margin-bottom: 6px; }
+  .metric-tile-value { font-family: var(--font-mono); font-size: 20px; font-weight: var(--fw-bold); line-height: 1.1; }
+  .metric-tile-value.up { color: var(--color-gain); }
+  .metric-tile-value.down { color: var(--color-loss); }
+  .metric-tile-bench { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+  .holding-flag-note { display: flex; align-items: flex-start; gap: 6px; font-size: 11.5px; margin-top: 6px; padding: 5px 9px; border-radius: var(--radius-md); }
+  .holding-flag-note.tone-high { background: var(--severity-high-wash); color: var(--severity-high); }
+  .holding-flag-note.tone-medium { background: var(--severity-medium-wash); color: var(--severity-medium); }
+  .attention-row { display: flex; gap: var(--space-4); padding: var(--space-4) 0; border-bottom: 1px solid var(--border-hairline); }
+  .attention-row:last-child { border-bottom: none; }
   .holdings-table tbody tr.sub-row td { background: var(--surface-sunken); }
   .holdings-table tbody tr.sub-row:hover td { background: color-mix(in srgb, var(--accent) 5%, var(--surface-sunken)); }
   .holdings-table tbody tr.sub-row .holding-name-cell { font-weight: var(--fw-medium); padding-left: var(--space-6); }
@@ -404,6 +417,7 @@
   .insight-icon.tone-critical { background: var(--severity-critical-wash); color: var(--severity-critical); }
   .insight-icon.tone-high { background: var(--severity-high-wash); color: var(--severity-high); }
   .insight-icon.tone-gain { background: var(--sage-wash); color: var(--sage-500); }
+  .insight-icon.tone-medium { background: var(--severity-medium-wash); color: var(--severity-medium); }
   .insight-title { font-size: var(--fs-meta); font-weight: var(--fw-bold); margin-bottom: 3px; }
   .insight-body { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
   .insight-body b { color: var(--text-primary); font-weight: var(--fw-bold); }
@@ -1258,6 +1272,71 @@ function goalFitComparator(scopePositions) {
   const scenarios = GOAL_PLAN.scenarios;
   return { blended, coveragePct: total ? covered / total : 0, scenarios, deltaVsBase: blended.y3 != null ? blended.y3 - scenarios.base.existing : null };
 }
+// A real, disclosed household-mix benchmark for comparing against XIRR/TWR — weights each position
+// by its own class's already-established, real base-case rate (FD's own contracted rate, EPF's
+// statutory rate, Gold's researched price-consensus rate, and the Goal plan's own base-case
+// existing-corpus rate for every equity-like holding), never a newly-invented number. This is the
+// same blend GOAL_PLAN already uses conceptually for "existing corpus," just computed per-scope
+// instead of once at the household level, so a market-index 3-month trailing return (too volatile
+// a window for comparing against an annualised XIRR) is never the comparator.
+function blendedBenchmarkReturn(scopePositions) {
+  const total = scopePositions.reduce((s, p) => s + p.current_value, 0);
+  if (!total) return null;
+  let sum = 0;
+  scopePositions.forEach(p => {
+    const inst = instruments[p.instrument_id];
+    let rate;
+    if (inst?.l3 === 'FD') rate = inst.rate;
+    else if (inst?.l3 === 'EPF') rate = GOAL_PLAN.epfRate;
+    else if (inst?.l3 === 'Gold ETF') rate = GOAL_PLAN.goldRate;
+    else rate = GOAL_PLAN.scenarios.base.existing;
+    sum += (rate ?? GOAL_PLAN.scenarios.base.existing) * p.current_value;
+  });
+  return sum / total;
+}
+
+// Real, computed "worth a closer look" flags per holding — every trigger traces to an already-real
+// signal (peer performance, concentration weight, cost drag, credit risk, 52-week range, valuation
+// vs. growth). Wording stays descriptive ("worth checking"), never a buy/sell directive, per the
+// AI-boundaries rule. Feeds a badge on the Holdings tab and a compact list on Overview.
+function holdingAttentionFlags(p) {
+  const inst = instruments[p.instrument_id];
+  if (!inst) return null;
+  const reasons = [];
+  let severity = 'medium';
+
+  const weight = householdTotals.current_total ? p.current_value / householdTotals.current_total : 0;
+  if (weight >= 0.08) { reasons.push(`${(weight * 100).toFixed(1)}% of net worth in one line`); if (weight > 0.15) severity = 'high'; }
+
+  const gp = gainPctOf(p);
+  if (gp != null) {
+    const peers = ALL_PRICED.filter(x => classOf(x) === classOf(p) && x.id !== p.id);
+    const withGain = peers.filter(x => gainPctOf(x) != null);
+    if (withGain.length >= 2) {
+      const avg = withGain.reduce((s, x) => s + gainPctOf(x), 0) / withGain.length;
+      if ((gp - avg) * 100 < -15) { reasons.push(`${Math.abs((gp - avg) * 100).toFixed(0)}pts behind its peer average`); severity = 'high'; }
+    }
+  }
+
+  const research = researchFor(p.instrument_id);
+  if (research?.peRatioTTM != null && research.growthOutlook?.y3 != null && research.peRatioTTM > 40 && research.growthOutlook.y3 < 0.15) {
+    reasons.push('rich valuation paired with a modest growth outlook');
+    severity = 'high';
+  }
+
+  if (inst.tech) {
+    const price = nativePrice(p);
+    const pos = (price - inst.tech.week52Low) / (inst.tech.week52High - inst.tech.week52Low);
+    if (pos < 0.15) reasons.push('trading near its 52-week low');
+  }
+
+  if (p.instrument_id === 'inst_shriram_fd') reasons.push('NBFC deposit paying less than a safer bank FD next to it');
+  if (p.instrument_id === 'inst_hdfc_sensex_regular_k') reasons.push('Regular plan — a cheaper Direct plan of the identical fund exists in this household');
+  if (p.instrument_id === 'inst_axis_elss') reasons.push('past ELSS lock-in — worth checking if 80C is still the reason to hold');
+
+  if (!reasons.length) return null;
+  return { severity, reasons };
+}
 
 // ---- New deep-analysis insight cards — real, scope-aware, descriptive only (never a buy/sell
 // directive, per AI boundaries) ----
@@ -1441,7 +1520,8 @@ function scopeReturnMetrics(scope) {
     return { primary: { label: 'Contracted rate', value: wRate }, secondary: null, note: 'Real, bank-contracted interest rate — fixed deposits earn a guaranteed rate, not a market-driven XIRR/TWR.' };
   }
   if (!scope.selected && scope.classId === 'all' && scope.memberId === 'all') {
-    return { primary: { label: 'XIRR', value: householdTotals.xirr }, secondary: { label: 'TWR', value: householdTotals.twr }, note: 'Household total. What you personally earned, including timing.' };
+    const benchmark = blendedBenchmarkReturn(ALL_PRICED);
+    return { primary: { label: 'XIRR', value: householdTotals.xirr }, secondary: { label: 'TWR', value: householdTotals.twr }, benchmark, note: `Household total. What you personally earned, including timing. Colour vs. a blended household-mix benchmark${benchmark != null ? ` (${formatPct(benchmark)} — FD/EPF/Gold at their own real rates, equity at the Goal plan's base case)` : ''}.` };
   }
   const currency = currencyMajority(posList);
   const bench = currency === 'USD' ? BENCHMARKS.nasdaq : BENCHMARKS.nifty50;
@@ -1767,8 +1847,12 @@ function NewsSection({ items }) {
   `;
 }
 
-function HeroStat({ label, value, dim }) {
-  return html`<span class="hero-toggle-value tabular ${dim ? 'dim' : (value < 0 ? 'down' : '')}">${pctOrDash(value)}<span class="hero-toggle-label"> ${label}</span></span>`;
+function HeroStat({ label, value, dim, benchmark }) {
+  let cls = '';
+  if (benchmark != null && value != null) cls = value >= benchmark ? 'up' : 'down';
+  else if (dim) cls = 'dim';
+  else if (value < 0) cls = 'down';
+  return html`<span class="hero-toggle-value tabular ${cls}">${pctOrDash(value)}<span class="hero-toggle-label"> ${label}</span></span>`;
 }
 function PortfolioHeroCard() {
   // Absolute % increase — simple (value - invested) / invested, not annualized like XIRR/TWR.
@@ -1776,18 +1860,19 @@ function PortfolioHeroCard() {
   // same convention ScopeHeroCard already uses) so this never becomes a second, drifting source of
   // "what's invested."
   const absPct = GOAL_INVESTED_TO_DATE ? (householdTotals.current_total - GOAL_INVESTED_TO_DATE) / GOAL_INVESTED_TO_DATE : null;
+  const benchmark = blendedBenchmarkReturn(ALL_PRICED);
   return html`
     <${Card}>
       <div class="hero-card-label">Household</div>
       <div class="hero-card-value tabular">${formatFullINR(householdTotals.current_total)}</div>
       <div class="hero-toggle">
-        <${HeroStat} label="XIRR" value=${householdTotals.xirr} />
+        <${HeroStat} label="XIRR" value=${householdTotals.xirr} benchmark=${benchmark} />
         <span class="hero-toggle-swap">⇄</span>
-        <${HeroStat} label="TWR" value=${householdTotals.twr} dim />
+        <${HeroStat} label="TWR" value=${householdTotals.twr} benchmark=${benchmark} />
         <span class="hero-toggle-swap">·</span>
         <${HeroStat} label="Absolute" value=${absPct} />
       </div>
-      <div class="hero-toggle-note">What you personally earned, including timing. Absolute is the simple total return since invested, not annualised.</div>
+      <div class="hero-toggle-note">What you personally earned, including timing. Absolute is the simple total return since invested, not annualised. Colour vs. a blended household-mix benchmark${benchmark != null ? ` (${formatPct(benchmark)})` : ''} — FD/EPF/Gold at their own real rates, equity at the Goal plan's base case.</div>
     <//>
   `;
 }
@@ -1805,8 +1890,8 @@ function ScopeHeroCard({ scope }) {
       <div class="hero-card-label">${scope.label}</div>
       <div class="hero-card-value tabular">${formatFullINR(scope.scopeTotal)}</div>
       <div class="hero-toggle">
-        <${HeroStat} label=${m.primary.label} value=${m.primary.value} />
-        ${m.secondary ? html`<span class="hero-toggle-swap">⇄</span><${HeroStat} label=${m.secondary.label} value=${m.secondary.value} dim />` : ''}
+        <${HeroStat} label=${m.primary.label} value=${m.primary.value} benchmark=${m.benchmark} />
+        ${m.secondary ? html`<span class="hero-toggle-swap">⇄</span><${HeroStat} label=${m.secondary.label} value=${m.secondary.value} dim=${m.benchmark == null} benchmark=${m.benchmark} />` : ''}
         ${showAbsolute ? html`<span class="hero-toggle-swap">·</span><${HeroStat} label="Absolute" value=${absPct} />` : ''}
       </div>
       <div class="hero-toggle-note">Invested ${formatINR(invested)} · ${m.note}</div>
@@ -2131,6 +2216,45 @@ function GeneralInsightsPanel({ scope }) {
 // Goal Fit / Performance & Signals. See Base resources/deep-analysis-methodology.md for how the
 // underlying research (research-profiles.js / fund-holdings.js / sector-outlook.js /
 // geography-outlook.js) was gathered and how to refresh it later.
+
+// 5 always-visible "at a glance" metrics, each with its own real benchmark — added 2026-09-27 so
+// the household's real numbers vs. what they're being measured against don't require opening a
+// specific tab to see. Concentration/sector thresholds (10%/25%) are the same kind of disclosed,
+// fixed guidance-rule numbers already used elsewhere in this app (concentrationInsight's 8%/15%
+// thresholds) — not a market index, but not invented either; labeled "Guidance" so that's clear.
+function KeyMetricsRow({ scope }) {
+  const pe = useMemo(() => blendedPE(scope.filtered), [scope.filtered]);
+  const goalFit = useMemo(() => goalFitComparator(scope.filtered), [scope.filtered]);
+  const tse = useMemo(() => trueStockExposure(scope.filtered), [scope.filtered]);
+  const sectorData = useMemo(() => sectorExposureLookthrough(scope.filtered), [scope.filtered]);
+  const techScan = useMemo(() => technicalScanData(scope.scopePositions), [scope.label]);
+
+  const bench = INDEX_PE_BENCHMARKS.nifty50;
+  const peDeltaPct = pe.portfolioPE != null ? (pe.portfolioPE - bench.peRatioTTM) / bench.peRatioTTM : null;
+  const topSector = sectorData.bars.find(b => b.label !== 'Unclassified / Other');
+  const topConc = tse.rows[0];
+  const avgTech = techScan.rows.length ? techScan.rows.reduce((s, r) => s + r.pos, 0) / techScan.rows.length : null;
+
+  const tiles = [
+    { label: 'Blended P/E', value: pe.portfolioPE != null ? `${pe.portfolioPE.toFixed(1)}x` : '—', bench: `Nifty 50: ${bench.peRatioTTM}x`, tone: peDeltaPct == null ? '' : peDeltaPct > 0.5 ? 'down' : peDeltaPct > 0.15 ? '' : 'up' },
+    { label: '3yr Growth Outlook', value: pctOrDash(goalFit.blended.y3), bench: `Goal base case: ${formatPct(goalFit.scenarios.base.existing)}`, tone: goalFit.deltaVsBase == null ? '' : goalFit.deltaVsBase >= 0 ? 'up' : 'down' },
+    { label: 'Top True Concentration', value: topConc ? formatPct(topConc.weight) : '—', bench: 'Guidance: <10%', tone: !topConc ? '' : topConc.weight > 0.10 ? 'down' : 'up' },
+    { label: 'Top Sector Exposure', value: topSector ? formatPct(topSector.pct) : '—', bench: 'Guidance: <25%', tone: !topSector ? '' : topSector.pct > 0.25 ? 'down' : 'up' },
+    { label: 'Technical Positioning', value: avgTech != null ? `${(avgTech * 100).toFixed(0)}%` : '—', bench: 'Neutral: 50% of 52wk range', tone: '' },
+  ];
+  return html`
+    <div class="metric-tile-row">
+      ${tiles.map((t, i) => html`
+        <div class="metric-tile" key=${i}>
+          <div class="metric-tile-label">${t.label}</div>
+          <div class="metric-tile-value tabular ${t.tone}">${t.value}</div>
+          <div class="metric-tile-bench">${t.bench}</div>
+        </div>
+      `)}
+    </div>
+  `;
+}
+
 function InsightsOverviewTab({ scope }) {
   const trend = useMemo(() => trendForScope(scope), [scope.label, scope.scopeTotal]);
   const yearRows = useMemo(() => historicalYearRows(scope), [scope.label, scope.scopeTotal]);
@@ -2142,8 +2266,32 @@ function InsightsOverviewTab({ scope }) {
   const classCompare = useMemo(() => isOverview ? classComparisonData(scope.memberId) : null, [isOverview, scope.memberId]);
   const benchReturn = trend.benchmark ? trend.benchmark.return3mo : null;
   const goalFit = useMemo(() => goalFitComparator(ALL_PRICED), []);
+  const attentionList = useMemo(() => {
+    return mergedRowsFor(scope.filtered)
+      .map(p => ({ p, flag: holdingAttentionFlags(p) }))
+      .filter(x => x.flag)
+      .sort((a, b) => (a.flag.severity === b.flag.severity ? b.p.current_value - a.p.current_value : a.flag.severity === 'high' ? -1 : 1))
+      .slice(0, 5);
+  }, [scope.filtered]);
   return html`
     <div class="insights-col">
+      ${attentionList.length ? html`
+        <div class="span-2">
+          <div class="insight-section-title"><${Icon} name="flag" size=${13} />Worth a closer look</div>
+          <${Card}>
+            ${attentionList.map(({ p, flag }) => html`
+              <div class="attention-row" key=${p.id}>
+                <span class="insight-icon tone-${flag.severity}"><${Icon} name="flag" size=${16} /></span>
+                <div class="card-body">
+                  <div class="insight-title">${p.isMerged ? `${p.lots.length} holdings — ` : ''}${instruments[p.instrument_id]?.name || p.instrument_id} <span class="tabular" style="font-weight:var(--fw-medium);color:var(--text-tertiary)">· ${formatINR(p.current_value)}</span></div>
+                  <div class="insight-body">${flag.reasons.join(' · ')}</div>
+                </div>
+              </div>
+            `)}
+            <div class="trend-note" style="margin-top:var(--space-3)">Real, computed triggers (peer performance, concentration, cost drag, valuation vs. growth, 52-week range) — worth reviewing, not a recommendation to act. Open Holdings for the full detail on each.</div>
+          <//>
+        </div>
+      ` : ''}
       ${isEpf ? html`
         <div class="span-2">
           <div class="insight-section-title"><${Icon} name="trendUp" size=${13} />Real growth & projection</div>
@@ -2278,10 +2426,16 @@ function InsightsHoldingsTab({ scope }) {
 
   const byHoldingRows = useMemo(() => {
     const rows = mergedRowsFor(scope.filtered);
+    const SEV_RANK = { high: 0, medium: 1 };
     const sorted = [...rows].sort((a, b) => {
       if (sortKey === 'name') return (instruments[a.instrument_id]?.name || '').localeCompare(instruments[b.instrument_id]?.name || '');
       if (sortKey === 'pe') return (researchFor(b.instrument_id)?.peRatioTTM ?? -1) - (researchFor(a.instrument_id)?.peRatioTTM ?? -1);
       if (sortKey === 'growth') return (researchFor(b.instrument_id)?.growthOutlook?.y3 ?? -1) - (researchFor(a.instrument_id)?.growthOutlook?.y3 ?? -1);
+      if (sortKey === 'attention') {
+        const fa = holdingAttentionFlags(a), fb = holdingAttentionFlags(b);
+        const ra = fa ? SEV_RANK[fa.severity] : 2, rb = fb ? SEV_RANK[fb.severity] : 2;
+        return ra !== rb ? ra - rb : b.current_value - a.current_value;
+      }
       return b.current_value - a.current_value;
     });
     return sorted;
@@ -2299,6 +2453,7 @@ function InsightsHoldingsTab({ scope }) {
         ${view === 'by-holding' ? html`
           <select class="filter-select" value=${sortKey} onChange=${e => setSortKey(e.target.value)}>
             <option value="value">Sort: Value</option>
+            <option value="attention">Sort: Needs attention</option>
             <option value="pe">Sort: P/E</option>
             <option value="growth">Sort: 3yr growth</option>
             <option value="name">Sort: Name</option>
@@ -2312,6 +2467,7 @@ function InsightsHoldingsTab({ scope }) {
         const weight = householdTotals.current_total ? p.current_value / householdTotals.current_total : 0;
         const research = researchFor(p.instrument_id);
         const lt = ['Index fund', 'Active MF'].includes(inst?.l3) ? lookthroughFor(p.instrument_id) : null;
+        const flag = holdingAttentionFlags(p);
         let badge = '';
         if (research?.peRatioTTM != null) badge = `P/E ${research.peRatioTTM.toFixed(1)}x${research.growthOutlook?.y3 != null ? ` · 3yr growth ${(research.growthOutlook.y3 * 100).toFixed(0)}%` : ''}`;
         else if (lt) badge = lt.instrumentType === 'debt' ? `Debt fund · ${lt.holdingType.split('—')[0].trim()}` : `Top 10 shown · as of ${lt.asof}`;
@@ -2320,7 +2476,10 @@ function InsightsHoldingsTab({ scope }) {
           <div class="holding-row" key=${p.id} onClick=${() => toggleExpand(p.id)}>
             <div class="holding-row-head">
               <div>
-                <div class="holding-row-name"><span class="expand-toggle">${isExpanded ? '−' : '+'}</span>${p.isMerged ? `${p.lots.length} holdings — ` : ''}${inst?.name || p.instrument_id}</div>
+                <div class="holding-row-name">
+                  <span class="expand-toggle">${isExpanded ? '−' : '+'}</span>${p.isMerged ? `${p.lots.length} holdings — ` : ''}${inst?.name || p.instrument_id}
+                  ${flag ? html`<span class="badge tone-${flag.severity}">Review</span>` : ''}
+                </div>
                 <div class="holding-row-sub">${classLabel(classOf(p))}${badge ? ` · ${badge}` : ''}</div>
               </div>
               <div class="holding-row-value">
@@ -2328,6 +2487,7 @@ function InsightsHoldingsTab({ scope }) {
                 <div class="holding-row-badge">${(weight * 100).toFixed(1)}% of net worth</div>
               </div>
             </div>
+            ${flag ? html`<div class="holding-flag-note tone-${flag.severity}"><${Icon} name="flag" size=${12} />${flag.reasons.join(' · ')}</div>` : ''}
             ${isExpanded ? html`<div onClick=${e => e.stopPropagation()}><${HoldingResearchDetail} p=${p} inst=${inst} /></div>` : ''}
           </div>
         `;
@@ -2587,7 +2747,8 @@ function InsightsScreen() {
   return html`
     <div>
       <${ScopeHeroCard} scope=${scope} />
-      <div class="class-btn-row" style="margin-top:var(--space-8)">
+      <${KeyMetricsRow} scope=${scope} />
+      <div class="class-btn-row">
         ${CLASS_BUCKETS.map(c => {
           const count = c.id === 'all' ? ALL_PRICED.length : ALL_PRICED.filter(p => classOf(p) === c.id).length;
           return html`<button key=${c.id} class="class-btn ${classId === c.id ? 'active' : ''}" onClick=${() => setClassId(c.id)}>${c.label}<span class="cnt">${count}</span></button>`;
