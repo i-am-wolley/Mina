@@ -1344,6 +1344,42 @@ function blendedBenchmarkReturn(scopePositions) {
   return sum / total;
 }
 
+// Peer group for performance comparisons — the narrowest real, risk-comparable segment we actually
+// have data for, not just the broad CLASS_BUCKETS bucket. Before this, "peers" meant literally
+// every holding in the same bucket regardless of risk profile — a liquid debt fund's peers included
+// a small-cap equity fund, and a Consumer Staples stock's (AB InBev) peers included Semiconductor
+// names — never a fair comparison. Funds now compare within the same `fundCategoryOf()` category
+// (ELSS/Liquid/Smallcap/Midcap/Flexicap/Index/Active); stocks/RSU compare within the same real
+// parent sector (`parentSectorOf()`, sector-outlook.js). Falls back to the old broad-bucket
+// comparison only when the narrow segment has fewer than 2 other real holdings to average — and
+// says so (`narrow: false`) rather than silently passing off a broad comparison as a narrow one.
+// This still isn't a volatility/Sharpe-style *risk-adjusted* comparison — that needs historical
+// NAV/price time series this app doesn't ingest yet (a disclosed gap, not faked); sector/category
+// grouping is the closest real risk-comparable proxy available from data already on file.
+function peerGroupFor(p) {
+  const inst = instruments[p.instrument_id];
+  const cls = classOf(p);
+  if (cls === 'mf') {
+    const cat = fundCategoryOf(inst);
+    const narrow = ALL_PRICED.filter(x => x.id !== p.id && classOf(x) === 'mf' && fundCategoryOf(instruments[x.instrument_id]) === cat);
+    if (narrow.length >= 2) return { peers: narrow, label: `${cat} fund`, narrow: true };
+  }
+  if (cls === 'indian_equity' || cls === 'foreign_equity') {
+    const parent = parentSectorOf(inst?.sector);
+    if (parent) {
+      const narrow = ALL_PRICED.filter(x => x.id !== p.id && classOf(x) === cls && parentSectorOf(instruments[x.instrument_id]?.sector) === parent);
+      if (narrow.length >= 2) return { peers: narrow, label: parent, narrow: true };
+    }
+  }
+  return { peers: ALL_PRICED.filter(x => x.id !== p.id && classOf(x) === cls), label: classLabel(cls), narrow: false };
+}
+// A real, general benchmark for the holding's own market (not the peer group) — INR-majority
+// holdings against Nifty 50's real trailing 3-month return, USD-majority against Nasdaq's — the
+// same two benchmarks already used throughout this app (scopeReturnMetrics, trendForScope).
+function segmentBenchmark(p) {
+  return instruments[p.instrument_id]?.currency === 'USD' ? BENCHMARKS.nasdaq : BENCHMARKS.nifty50;
+}
+
 // Real, computed "worth a closer look" flags per holding — every trigger traces to an already-real
 // signal (peer performance, concentration weight, cost drag, credit risk, 52-week range, valuation
 // vs. growth). Wording stays descriptive ("worth checking"), never a buy/sell directive, per the
@@ -1359,11 +1395,15 @@ function holdingAttentionFlags(p) {
 
   const gp = gainPctOf(p);
   if (gp != null) {
-    const peers = ALL_PRICED.filter(x => classOf(x) === classOf(p) && x.id !== p.id);
+    const { peers, label, narrow } = peerGroupFor(p);
     const withGain = peers.filter(x => gainPctOf(x) != null);
     if (withGain.length >= 2) {
       const avg = withGain.reduce((s, x) => s + gainPctOf(x), 0) / withGain.length;
-      if ((gp - avg) * 100 < -15) { reasons.push(`${Math.abs((gp - avg) * 100).toFixed(0)}pts behind its peer average`); severity = 'high'; }
+      if ((gp - avg) * 100 < -15) {
+        const bench = segmentBenchmark(p);
+        reasons.push(`${Math.abs((gp - avg) * 100).toFixed(0)}pts behind its ${narrow ? label : classLabel(classOf(p))} peer average (${bench.label} trailing 3mo: ${formatPct(bench.return3mo)})`);
+        severity = 'high';
+      }
     }
   }
 
@@ -1475,19 +1515,23 @@ function technicalInsight(p) {
     body: `At ${formatMoney(price, inst.currency)}, ${inst.name.split(' ').slice(0, 3).join(' ')} is ${read} Day range ${formatMoney(dayLow, inst.currency)}–${formatMoney(dayHigh, inst.currency)}, volume ${volume.toLocaleString('en-IN')}. <span style="opacity:0.7">Source: Yahoo Finance, ${inst.tech.asof.split('(')[0].trim()}.</span>`,
   };
 }
-function peerComparisonInsight(p, peers) {
+function peerComparisonInsight(p) {
   const gp = gainPctOf(p);
-  if (gp == null || peers.length < 2) return null;
-  const withGain = peers.filter(x => gainPctOf(x) != null && x.id !== p.id);
-  if (!withGain.length) return null;
+  if (gp == null) return null;
+  const { peers, label, narrow } = peerGroupFor(p);
+  const withGain = peers.filter(x => gainPctOf(x) != null);
+  if (withGain.length < 2) return null;
   const avg = withGain.reduce((s, x) => s + gainPctOf(x), 0) / withGain.length;
   const diff = (gp - avg) * 100;
   const inst = instruments[p.instrument_id];
+  const bench = segmentBenchmark(p);
+  const groupPhrase = narrow ? `other ${label} holdings` : `other holdings in the same bucket (no narrower real segment with ≥2 peers)`;
+  const benchNote = ` For context, ${bench.label}'s real trailing 3-month return is ${formatPct(bench.return3mo)}.`;
   if (diff < -12) {
-    return { id: 'underperform', icon: 'flag', tone: 'high', tag: 'Performance', title: 'Underperforming its own peer set', body: `${inst.name.split(' ').slice(0, 4).join(' ')} is returning <b>${formatPct(gp)}</b>, vs an average of <b>${formatPct(avg)}</b> across the other holdings in the same bucket — <b>${Math.abs(diff).toFixed(0)} points behind</b>. Worth a fresh look at whether it still earns its place.` };
+    return { id: 'underperform', icon: 'flag', tone: 'high', tag: 'Performance', title: 'Underperforming its own peer set', body: `${inst.name.split(' ').slice(0, 4).join(' ')} is returning <b>${formatPct(gp)}</b>, vs an average of <b>${formatPct(avg)}</b> across ${groupPhrase} — <b>${Math.abs(diff).toFixed(0)} points behind</b>.${benchNote} Worth a fresh look at whether it still earns its place.` };
   }
   if (diff > 25) {
-    return { id: 'outperform', icon: 'trendUp', tag: 'Performance', title: 'A standout performer in its bucket', body: `${inst.name.split(' ').slice(0, 4).join(' ')} is returning <b>${formatPct(gp)}</b>, well ahead of the <b>${formatPct(avg)}</b> average of its peers. Worth checking it hasn't grown into an oversized position by success alone.` };
+    return { id: 'outperform', icon: 'trendUp', tag: 'Performance', title: 'A standout performer in its bucket', body: `${inst.name.split(' ').slice(0, 4).join(' ')} is returning <b>${formatPct(gp)}</b>, well ahead of the <b>${formatPct(avg)}</b> average of ${groupPhrase}.${benchNote} Worth checking it hasn't grown into an oversized position by success alone.` };
   }
   return null;
 }
@@ -1583,8 +1627,7 @@ function computeScopedInsights(scope) {
     const p = scope.selected;
     const tech = technicalInsight(p);
     if (tech) out.push(tech);
-    const classPeers = ALL_PRICED.filter(x => classOf(x) === classOf(p));
-    const peerCmp = peerComparisonInsight(p, classPeers);
+    const peerCmp = peerComparisonInsight(p);
     if (peerCmp) out.push(peerCmp);
     const conc = concentrationInsight(p, scope.scopeTotal);
     if (conc) out.push(conc);
