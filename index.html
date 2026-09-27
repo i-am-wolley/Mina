@@ -356,6 +356,20 @@
   .holding-flag-note.tone-medium { background: var(--severity-medium-wash); color: var(--severity-medium); }
   .attention-row { display: flex; gap: var(--space-4); padding: var(--space-4) 0; border-bottom: 1px solid var(--border-hairline); }
   .attention-row:last-child { border-bottom: none; }
+  .month-cal-row { display: flex; gap: var(--space-6); flex-wrap: wrap; }
+  .month-cal { flex: 1 1 300px; border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: var(--space-5); background: var(--surface-card); }
+  .month-cal-title { font-size: var(--fs-label); font-weight: var(--fw-bold); margin-bottom: var(--space-4); }
+  .month-cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: var(--ls-label); margin-bottom: 6px; text-align: center; }
+  .month-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .month-cal-cell { aspect-ratio: 1; border-radius: var(--radius-sm); padding: 3px 4px; font-size: 10px; overflow: hidden; background: var(--surface-sunken); }
+  .month-cal-cell.empty { background: transparent; }
+  .month-cal-cell.has-event { background: var(--accent-wash); box-shadow: inset 0 0 0 1px var(--accent); }
+  .month-cal-daynum { font-weight: var(--fw-bold); font-size: 11px; color: var(--text-secondary); }
+  .month-cal-event { font-size: 8.5px; color: var(--accent); margin-top: 2px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .month-cal-more { font-size: 8px; color: var(--text-tertiary); }
+  .proposal-slice-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) 0; border-bottom: 1px solid var(--border-hairline); gap: var(--space-4); }
+  .proposal-slice-row:last-child { border-bottom: none; }
+  .proposal-slice-amt { font-family: var(--font-mono); font-weight: var(--fw-bold); flex-shrink: 0; }
   .holdings-table tbody tr.sub-row td { background: var(--surface-sunken); }
   .holdings-table tbody tr.sub-row:hover td { background: color-mix(in srgb, var(--accent) 5%, var(--surface-sunken)); }
   .holdings-table tbody tr.sub-row .holding-name-cell { font-weight: var(--fw-medium); padding-left: var(--space-6); }
@@ -733,7 +747,7 @@ function currencyMajority(positionList) {
 }
 function buildIllustrativeTrend(startValue, endValue, days = 90, seed = 7) {
   const rand = seededRandom(seed);
-  const today = new Date('2026-09-26T00:00:00');
+  const today = new Date('2026-09-27T00:00:00');
   let value = startValue;
   const series = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -810,7 +824,7 @@ function whatChangedCards() {
 }
 
 function AgendaList() {
-  const today = new Date('2026-09-26T00:00:00');
+  const today = new Date('2026-09-27T00:00:00');
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(d.getDate() + i);
     const iso = toLocalISO(d);
@@ -830,6 +844,55 @@ function AgendaList() {
           </div>
         `;
       }))}
+    </div>
+  `;
+}
+
+// Month-grid calendar (current + next month), replacing the "Next 14 days" list — 2026-09-27.
+// Real calendarEvents.js entries only, marked on their real date; no synthetic/predicted events
+// (same "real source or don't show it" rule as everywhere else in this file).
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function eventsForMonth(year, month) {
+  return calendarEvents.filter(e => { const d = new Date(e.date + 'T00:00:00'); return d.getFullYear() === year && d.getMonth() === month; });
+}
+function MonthCalendar({ year, month }) {
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const eventsByDay = new Map();
+  eventsForMonth(year, month).forEach(e => {
+    const day = parseInt(e.date.slice(8, 10), 10);
+    if (!eventsByDay.has(day)) eventsByDay.set(day, []);
+    eventsByDay.get(day).push(e);
+  });
+  const cells = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  return html`
+    <div class="month-cal">
+      <div class="month-cal-title">${MONTH_NAMES[month]} ${year}</div>
+      <div class="month-cal-weekdays">${DAY_LABELS.map(w => html`<div key=${w}>${w[0]}</div>`)}</div>
+      <div class="month-cal-grid">
+        ${cells.map((d, i) => {
+          if (d == null) return html`<div class="month-cal-cell empty" key=${`e${i}`}></div>`;
+          const dayEvents = eventsByDay.get(d) || [];
+          return html`
+            <div class="month-cal-cell ${dayEvents.length ? 'has-event' : ''}" key=${d} title=${dayEvents.map(e => e.label).join('; ')}>
+              <div class="month-cal-daynum">${d}</div>
+              ${dayEvents.slice(0, 1).map(e => html`<div class="month-cal-event" key=${e.id}>${e.label}</div>`)}
+              ${dayEvents.length > 1 ? html`<div class="month-cal-more">+${dayEvents.length - 1} more</div>` : ''}
+            </div>
+          `;
+        })}
+      </div>
+    </div>
+  `;
+}
+function CalendarSquares() {
+  const today = new Date('2026-09-27T00:00:00');
+  const y = today.getFullYear(), m = today.getMonth();
+  const nextM = (m + 1) % 12, nextY = m === 11 ? y + 1 : y;
+  return html`
+    <div class="month-cal-row">
+      <${MonthCalendar} year=${y} month=${m} />
+      <${MonthCalendar} year=${nextY} month=${nextM} />
     </div>
   `;
 }
@@ -939,7 +1002,6 @@ function MiniAllocation({ onOpenPortfolio }) {
 function TodayScreen({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   useEffect(() => { const t = setTimeout(() => setLoading(false), 350); return () => clearTimeout(t); }, []);
-  const cards = whatChangedCards();
   const todayFlat = householdTotals.delta_today === 0;
   const up = householdTotals.delta_today >= 0;
   return html`
@@ -953,22 +1015,9 @@ function TodayScreen({ onNavigate }) {
           </div>
           ${loading ? html`<div style="margin-top:var(--space-6)"><${Skeleton} height="90px" /></div>` : html`<${Sparkline} data=${netWorthHistory} />`}
         </div>
-        <div>
-          <div class="section-label">What changed</div>
-          ${cards.map(c => html`
-            <${Card} key=${c.key}>
-              <div class="card-row">
-                <span class="card-icon ${c.severity ? `tone-${SEVERITY_TONE[c.severity]}` : ''}"><${Icon} name=${c.icon} size=${17} /></span>
-                <div class="card-body"><div class="card-title">${c.severity ? html`<${SeverityBadge} severity=${c.severity} />` : ''} ${c.title}</div><div class="card-sub">${c.sub}</div></div>
-                ${c.trailing ? html`<div class="card-trailing tabular">${c.trailing}</div>` : ''}
-              </div>
-            <//>
-          `)}
-        </div>
-        <${MiniAllocation} onOpenPortfolio=${() => onNavigate('portfolio')} />
+        ${loading ? '' : html`<${CalendarSquares} />`}
       </div>
       <div class="side-panel">
-        <div><div class="section-label">Next 14 days</div><${Card}><${AgendaList} /><//></div>
         <${PortfolioActions} />
       </div>
     </div>
@@ -2739,6 +2788,59 @@ const INSIGHTS_SUB_TABS = [
   { id: 'goalfit', label: 'Goal Fit' },
   { id: 'performance', label: 'Performance & Signals' },
 ];
+// "If there's ₹1L to invest" — reuses the household's own already-decided, already-researched
+// target new-money blend (GOAL_ALLOCATION/GOAL_RESEARCH, built for the Goal tab's ongoing SIP) as
+// the baseline, cross-checked against the Goal tab's own live rebalancing rule (GOAL_FRAMEWORK:
+// tilt toward large-cap only if Nifty 50 genuinely cheapens below ~17-18x, redirect only if it
+// gets expensive above ~25x — never a fixed tilt invented just for this one card) and against the
+// household's own revealed risk profile (its real current composition — blended P/E, true
+// concentration — not a questionnaire). Category-level only, never a specific instrument (AI
+// boundaries) — the Goal tab already carries concrete, currently-open fund starting points per
+// category; this card answers "how much to which category and why," not "which fund."
+function lumpSumProposal(amount) {
+  const nifty = INDEX_PE_BENCHMARKS.nifty50;
+  let tiltNote = null;
+  if (nifty.peRatioTTM < 17.5) tiltNote = `Nifty 50 is at ${nifty.peRatioTTM}x, below the Goal plan's own ~17-18x tilt-in threshold — a real case for leaning a little more into India large-cap this time.`;
+  else if (nifty.peRatioTTM > 25) tiltNote = `Nifty 50 is at ${nifty.peRatioTTM}x, above the Goal plan's own ~25x threshold — a real case for redirecting fresh large-cap money to global/EM instead.`;
+
+  const goalFit = goalFitComparator(ALL_PRICED);
+  const pe = blendedPE(ALL_PRICED);
+  const tse = trueStockExposure(ALL_PRICED);
+  const topConc = tse.rows[0];
+  const paceNote = goalFit.deltaVsBase == null ? null : goalFit.deltaVsBase >= 0
+    ? `Your researched growth outlook (${formatPct(goalFit.blended.y3)}) already runs ${formatPct(Math.abs(goalFit.deltaVsBase))} ahead of the Goal plan's base case — this money doesn't need to chase return, so diversification matters as much as growth right now.`
+    : `Your researched growth outlook (${formatPct(goalFit.blended.y3)}) is ${formatPct(Math.abs(goalFit.deltaVsBase))} behind the Goal plan's base case — a real gap that favours staying with the standing allocation rather than de-risking further.`;
+
+  const slices = GOAL_ALLOCATION.map(g => ({ ...g, amount: Math.round(amount * g.weight) }));
+  return { amount, slices, tiltNote, paceNote, nifty, pe, topConc };
+}
+function LumpSumProposalCard() {
+  const p = useMemo(() => lumpSumProposal(100000), []);
+  return html`
+    <div style="margin-bottom:var(--space-8)">
+      <div class="insight-section-title"><${Icon} name="wallet" size=${13} />If there's ${formatINR(p.amount)} to invest</div>
+      <${Card}>
+        <div class="insight-body">Applying the household's own already-decided, already-researched target for new money — the same split as the ongoing SIP (see the Goal tab's Research/Framework sections for the full case per slice), not a new recommendation invented for this card.</div>
+        <div style="margin-top:var(--space-4)">
+          ${p.slices.map(s => html`
+            <div class="proposal-slice-row" key=${s.key}>
+              <div>
+                <div style="font-weight:var(--fw-bold);font-size:13px">${s.key}</div>
+                <div class="holding-row-badge">${(s.weight * 100).toFixed(0)}% of this amount</div>
+              </div>
+              <div class="proposal-slice-amt tabular">${formatINR(s.amount)}</div>
+            </div>
+          `)}
+        </div>
+        <div class="trend-note" style="margin-top:var(--space-4)">${p.tiltNote || `Nifty 50 sits at ${p.nifty.peRatioTTM}x — between the Goal plan's own tilt-in (~17-18x) and redirect (~25x) thresholds, so the standard split applies unchanged this time.`}</div>
+        ${p.paceNote ? html`<div class="trend-note" style="margin-top:var(--space-3)">${p.paceNote}</div>` : ''}
+        <div class="trend-note" style="margin-top:var(--space-3)">Your portfolio's own composition today — blended P/E ${p.pe.portfolioPE != null ? `${p.pe.portfolioPE.toFixed(1)}x` : '—'}${p.topConc ? `, ${formatPct(p.topConc.weight)} true concentration in ${p.topConc.name}` : ''} — reveals a growth-tilted, concentration-aware risk profile; this split leans toward diversified/index exposure rather than adding to what's already concentrated.</div>
+        <div class="gap-note" style="margin-top:var(--space-4)">Category-level only — see the Goal tab for concrete, currently-open fund starting points per slice. Not personalised licensed advice.</div>
+      <//>
+    </div>
+  `;
+}
+
 function InsightsScreen() {
   const [classId, setClassId] = useState('all');
   const [memberId, setMemberId] = useState('all');
@@ -2748,6 +2850,7 @@ function InsightsScreen() {
     <div>
       <${ScopeHeroCard} scope=${scope} />
       <${KeyMetricsRow} scope=${scope} />
+      <${LumpSumProposalCard} />
       <div class="class-btn-row">
         ${CLASS_BUCKETS.map(c => {
           const count = c.id === 'all' ? ALL_PRICED.length : ALL_PRICED.filter(p => classOf(p) === c.id).length;
